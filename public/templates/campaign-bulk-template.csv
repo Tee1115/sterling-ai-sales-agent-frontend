@@ -1,0 +1,5 @@
+campaign_name,module_key,customer_id,account_number,event_type,product_type,income_band,template_code,channel,start_date,end_date,recurrence
+April Existing Campaign,existing-life-updates,CUS-00491,0012345678,salary_increase,Current,500k-1m,SALARY_INCREASE,email,2026-04-01,2026-04-30,weekly
+April Existing Campaign,existing-migration,CUS-00388,0098765432,tier_upgrade,Savings,250k-500k,MIGRATION_UPGRADE,email,2026-04-01,2026-05-15,weekly
+Q2 Reactivation,inactive-transaction,CUS-01122,0056781234,dormancy_risk,Current,100k-250k,REACTIVATION_PROMPT,email,2026-04-02,2026-04-02,one_time
+Q2 Onebank Return,inactive-onebank,CUS-00774,0034561234,no_login,Savings,100k-250k,APP_RETURN,email,2026-04-03,2026-06-30,monthly
