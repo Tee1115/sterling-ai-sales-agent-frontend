@@ -1600,6 +1600,14 @@ button.cc-nav-child.active {
   background: #fff;
 }
 
+.cc-template-form-grid input,
+.cc-template-form-grid select,
+.cc-template-form-grid textarea,
+.cc-template-form-grid [contenteditable="true"] {
+  text-transform: none;
+  letter-spacing: normal;
+}
+
 .cc-form-grid textarea {
   resize: vertical;
   min-height: 180px;
@@ -2347,6 +2355,8 @@ button.cc-nav-child.active {
   color: var(--cc-ink);
   border-radius: 0 0 10px 10px;
   font-family: 'Century Gothic', 'AppleGothic', CenturyGothic, 'Trebuchet MS', sans-serif;
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 .cc-rich-content:focus {

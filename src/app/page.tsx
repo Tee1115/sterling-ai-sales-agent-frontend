@@ -948,7 +948,7 @@ function RichBodyEditor({ value, onChange }: { value: string; onChange: (html: s
   }
 
   function applyCase(mode: "uppercase" | "lowercase") {
-    editorRef.current?.focus();
+    restoreRange();
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
     const text = sel.toString();
@@ -1045,6 +1045,8 @@ function RichBodyEditor({ value, onChange }: { value: string; onChange: (html: s
         contentEditable
         suppressContentEditableWarning
         className="cc-rich-content"
+        onMouseUp={saveRange}
+        onKeyUp={saveRange}
         onFocus={() => { isFocused.current = true; }}
         onBlur={() => { isFocused.current = false; syncOut(); }}
         onInput={syncOut}
