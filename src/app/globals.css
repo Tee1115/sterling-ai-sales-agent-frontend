@@ -86,10 +86,47 @@ body {
 }
 
 .cc-auth-brand {
-  font-size: 12px;
-  letter-spacing: 0.16em;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-bottom: 28px;
+}
+
+.cc-auth-brand-mark {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cc-auth-brand-logo {
+  width: 28px;
+  height: 28px;
+  filter: brightness(0) invert(1);
+}
+
+.cc-auth-brand-name {
+  display: block;
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: #fff;
+}
+
+.cc-auth-brand-tagline {
+  display: block;
+  font-size: 10px;
   text-transform: uppercase;
-  margin-bottom: 16px;
+  letter-spacing: 0.13em;
+  color: rgba(255, 255, 255, 0.62);
+  margin-top: 3px;
+  font-weight: 500;
 }
 
 .cc-auth-left h1 {
@@ -261,23 +298,29 @@ body {
 }
 
 .cc-sidebar-brand {
-  border: 1px solid var(--cc-line);
-  background: linear-gradient(180deg, #fff 0%, #fff9f9 100%);
+  background: linear-gradient(135deg, var(--cc-red) 0%, var(--cc-red-dark) 100%);
   border-radius: 14px;
-  padding: 14px;
+  padding: 16px 16px 14px;
   display: grid;
   gap: 3px;
+  border: none;
+  box-shadow: 0 4px 16px rgba(200, 16, 46, 0.22);
 }
 
 .cc-sidebar-brand strong {
-  font-size: 0.95rem;
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
 }
 
 .cc-sidebar-brand span {
-  font-size: 0.68rem;
+  font-size: 0.6rem;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--cc-muted);
+  letter-spacing: 0.15em;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
 }
 
 .cc-sidebar nav {
@@ -2119,6 +2162,247 @@ button.cc-nav-child.active {
 .cc-result-badge-none {
   background: #92400e;
   color: #fff;
+}
+
+/* ── Rich Body Editor ─────────────────────────────── */
+.cc-rich-editor {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--cc-line);
+  border-radius: 10px;
+  overflow: visible;
+  background: #fff;
+  margin-top: 6px;
+}
+
+.cc-rich-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 6px 8px;
+  background: #f9f9f9;
+  border-bottom: 1px solid var(--cc-line);
+  flex-wrap: wrap;
+  border-radius: 10px 10px 0 0;
+}
+
+.cc-rtb-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  color: #444;
+  font-family: inherit;
+  line-height: 1.4;
+  transition: background 0.1s;
+  min-width: 28px;
+  text-align: center;
+}
+
+.cc-rtb-btn:hover {
+  background: #ececec;
+  color: #111;
+}
+
+.cc-rtb-italic em {
+  font-style: italic;
+}
+
+.cc-rtb-underline u {
+  text-decoration: underline;
+}
+
+.cc-rtb-sep {
+  display: inline-block;
+  width: 1px;
+  min-width: 1px;
+  height: 18px;
+  background: var(--cc-line);
+  margin: 0 5px;
+  align-self: center;
+}
+
+.cc-rtb-popup-wrap {
+  position: relative;
+}
+
+.cc-emoji-picker {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 200;
+  background: #fff;
+  border: 1px solid var(--cc-line);
+  border-radius: 12px;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 3px;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.14);
+  width: 268px;
+}
+
+.cc-emoji-picker button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 5px 3px;
+  border-radius: 6px;
+  font-size: 1rem;
+  line-height: 1;
+  text-align: center;
+}
+
+.cc-emoji-picker button:hover {
+  background: #f3f4f6;
+}
+
+.cc-link-dialog {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 200;
+  background: #fff;
+  border: 1px solid var(--cc-line);
+  border-radius: 12px;
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.14);
+  width: 270px;
+}
+
+.cc-link-dialog input {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--cc-line);
+  border-radius: 7px;
+  font-size: 0.82rem;
+  font-family: inherit;
+  outline: none;
+  background: #fff;
+}
+
+.cc-link-dialog input:focus {
+  border-color: var(--cc-red);
+  box-shadow: 0 0 0 2px var(--cc-red-soft);
+}
+
+.cc-link-dialog-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.cc-link-dialog-actions .cc-btn-primary {
+  flex: 1;
+  padding: 7px 10px;
+  font-size: 0.82rem;
+}
+
+.cc-link-dialog-actions .cc-btn-soft {
+  padding: 7px 10px;
+  font-size: 0.82rem;
+}
+
+.cc-rich-content {
+  min-height: 180px;
+  padding: 14px;
+  font-size: 0.9rem;
+  line-height: 1.75;
+  outline: none;
+  color: var(--cc-ink);
+  border-radius: 0 0 10px 10px;
+}
+
+.cc-rich-content:focus {
+  background: #fffaf9;
+}
+
+.cc-rich-content h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0.6em 0 0.3em;
+}
+
+.cc-rich-content h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0.5em 0 0.2em;
+}
+
+.cc-rich-content a {
+  color: var(--cc-red);
+  text-decoration: underline;
+}
+
+.cc-rich-content p {
+  margin: 0 0 0.5em;
+}
+
+/* ── Template form helper notes ───────────────────── */
+.cc-template-body-field > label,
+.cc-template-body-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cc-field-note {
+  font-size: 0.72rem;
+  color: var(--cc-muted);
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+/* ── Template preview body ────────────────────────── */
+.cc-rich-preview-body {
+  font-size: 0.9rem;
+  line-height: 1.75;
+  color: var(--cc-ink);
+  margin: 0;
+}
+
+.cc-rich-preview-body h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0.5em 0 0.3em;
+}
+
+.cc-rich-preview-body h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0.4em 0 0.2em;
+}
+
+.cc-rich-preview-body a {
+  color: var(--cc-red);
+  text-decoration: underline;
+}
+
+.cc-rich-preview-body p {
+  margin: 0 0 0.5em;
+}
+
+.cc-preview-header {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--cc-red);
+  padding: 10px 14px;
+  background: var(--cc-red-soft);
+  border-radius: 8px;
+  margin: 0 0 14px;
+  border-left: 3px solid var(--cc-red);
+}
+
+.cc-preview-template-footer {
+  font-size: 0.8rem;
+  color: var(--cc-muted);
+  font-style: italic;
+  margin: 14px 0 0;
+  padding-top: 10px;
+  border-top: 1px dashed var(--cc-line);
 }
 
 .cc-result-detail-grid {

@@ -82,7 +82,9 @@ type TemplateRow = {
   waveStage: WaveStage;
   channel: string;
   subject: string;
+  header?: string;
   body: string;
+  templateFooter?: string;
   status: string;
   updated: string;
 };
@@ -95,7 +97,9 @@ type TemplateDraft = {
   waveStage: WaveStage;
   channel: string;
   subject: string;
+  header: string;
   body: string;
+  templateFooter: string;
 };
 
 type ModuleWavePlan = {
@@ -432,10 +436,10 @@ const INITIAL_TEMPLATES: Record<string, TemplateRow[]> = {
 };
 
 const INITIAL_TEMPLATE_DRAFTS: Record<string, TemplateDraft> = {
-  "existing-life-updates": { name: "", templateCategory: "Life Event", product: "Savings", eventCategory: "New Job", waveStage: "Wave 1", channel: "Email", subject: "", body: "" },
-  "existing-migration": { name: "", templateCategory: "Product Category", product: "Current", eventCategory: "Account Tier Balance Threshold", waveStage: "Wave 1", channel: "Email", subject: "", body: "" },
-  "inactive-transaction": { name: "", templateCategory: "Recommendation Category", product: "Savings", eventCategory: "Dormancy Risk", waveStage: "Wave 1", channel: "Email", subject: "", body: "" },
-  "inactive-onebank": { name: "", templateCategory: "Recommendation Category", product: "Current", eventCategory: "No Login", waveStage: "Wave 1", channel: "Email", subject: "", body: "" },
+  "existing-life-updates": { name: "", templateCategory: "Life Event", product: "Savings", eventCategory: "New Job", waveStage: "Wave 1", channel: "Email", subject: "", header: "", body: "", templateFooter: "" },
+  "existing-migration": { name: "", templateCategory: "Product Category", product: "Current", eventCategory: "Account Tier Balance Threshold", waveStage: "Wave 1", channel: "Email", subject: "", header: "", body: "", templateFooter: "" },
+  "inactive-transaction": { name: "", templateCategory: "Recommendation Category", product: "Savings", eventCategory: "Dormancy Risk", waveStage: "Wave 1", channel: "Email", subject: "", header: "", body: "", templateFooter: "" },
+  "inactive-onebank": { name: "", templateCategory: "Recommendation Category", product: "Current", eventCategory: "No Login", waveStage: "Wave 1", channel: "Email", subject: "", header: "", body: "", templateFooter: "" },
 };
 
 const MODULE_WAVE_PLAN_DEFAULTS: Record<string, ModuleWavePlan> = {
@@ -779,6 +783,140 @@ const USER_ROWS: UserRow[] = [
 
 const EMPTY_OTP_VALUES = ["", "", "", "", "", ""];
 const DEMO_OTP_CODE = "123456";
+
+const RICH_EMOJIS = [
+  "😊","👋","🎉","💡","✅","🏆","📱","💰","🌟","🎁",
+  "📞","💳","🔔","📧","🎯","💬","🏦","💵","🎊","🙌",
+  "👍","❤️","🚀","📈","🔑","💎","🤝","📋","⭐","🎓",
+  "🙏","😃","💼","🏅","🎀","📌","🌈","✨","🔥","💯",
+];
+
+function RichBodyEditor({ value, onChange }: { value: string; onChange: (html: string) => void }) {
+  const editorRef = useRef<HTMLDivElement>(null);
+  const isFocused = useRef(false);
+  const lastExternal = useRef(value);
+  const savedRange = useRef<Range | null>(null);
+  const [showEmoji, setShowEmoji] = useState(false);
+  const [showLink, setShowLink] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkText, setLinkText] = useState("");
+
+  // Seed content on mount only
+  useEffect(() => {
+    if (editorRef.current) {
+      editorRef.current.innerHTML = value;
+      lastExternal.current = value;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sync external value changes (e.g. switching to edit mode) while not focused
+  useEffect(() => {
+    if (!isFocused.current && editorRef.current && value !== lastExternal.current) {
+      editorRef.current.innerHTML = value;
+      lastExternal.current = value;
+    }
+  }, [value]);
+
+  function syncOut() {
+    if (editorRef.current) {
+      const html = editorRef.current.innerHTML;
+      lastExternal.current = html;
+      onChange(html);
+    }
+  }
+
+  function exec(cmd: string, arg?: string) {
+    editorRef.current?.focus();
+    document.execCommand(cmd, false, arg ?? undefined);
+    syncOut();
+  }
+
+  function saveRange() {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) savedRange.current = sel.getRangeAt(0).cloneRange();
+  }
+
+  function restoreRange() {
+    const sel = window.getSelection();
+    if (sel && savedRange.current) {
+      sel.removeAllRanges();
+      sel.addRange(savedRange.current);
+    }
+  }
+
+  function insertEmoji(emoji: string) {
+    editorRef.current?.focus();
+    restoreRange();
+    document.execCommand("insertText", false, emoji);
+    syncOut();
+    setShowEmoji(false);
+  }
+
+  function insertLink() {
+    if (!linkUrl.trim()) return;
+    editorRef.current?.focus();
+    restoreRange();
+    const display = linkText.trim() || linkUrl;
+    document.execCommand("insertHTML", false, `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer">${display}</a>`);
+    syncOut();
+    setLinkUrl("");
+    setLinkText("");
+    setShowLink(false);
+  }
+
+  return (
+    <div className="cc-rich-editor">
+      <div className="cc-rich-toolbar" role="toolbar" aria-label="Text formatting">
+        <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); exec("bold"); }} title="Bold"><strong>B</strong></button>
+        <button type="button" className="cc-rtb-btn cc-rtb-italic" onMouseDown={(e) => { e.preventDefault(); exec("italic"); }} title="Italic"><em>I</em></button>
+        <button type="button" className="cc-rtb-btn cc-rtb-underline" onMouseDown={(e) => { e.preventDefault(); exec("underline"); }} title="Underline"><u>U</u></button>
+        <span className="cc-rtb-sep" />
+        <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); exec("formatBlock", "h2"); }} title="Heading 1">H1</button>
+        <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); exec("formatBlock", "h3"); }} title="Heading 2">H2</button>
+        <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); exec("formatBlock", "p"); }} title="Normal text">¶</button>
+        <span className="cc-rtb-sep" />
+        <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); exec("justifyLeft"); }} title="Align left">⬅</button>
+        <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); exec("justifyCenter"); }} title="Align centre">☰</button>
+        <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); exec("justifyRight"); }} title="Align right">➡</button>
+        <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); exec("justifyFull"); }} title="Justify">≡</button>
+        <span className="cc-rtb-sep" />
+        <div className="cc-rtb-popup-wrap">
+          <button type="button" className="cc-rtb-btn" title="Insert emoji" onMouseDown={(e) => { e.preventDefault(); saveRange(); setShowEmoji((v) => !v); setShowLink(false); }}>😊</button>
+          {showEmoji && (
+            <div className="cc-emoji-picker">
+              {RICH_EMOJIS.map((em) => (
+                <button key={em} type="button" onMouseDown={(e) => { e.preventDefault(); insertEmoji(em); }}>{em}</button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="cc-rtb-popup-wrap">
+          <button type="button" className="cc-rtb-btn" title="Insert hyperlink" onMouseDown={(e) => { e.preventDefault(); saveRange(); setShowLink((v) => !v); setShowEmoji(false); }}>🔗</button>
+          {showLink && (
+            <div className="cc-link-dialog">
+              <input autoFocus placeholder="https://..." value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); insertLink(); } }} />
+              <input placeholder="Display text (optional)" value={linkText} onChange={(e) => setLinkText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); insertLink(); } }} />
+              <div className="cc-link-dialog-actions">
+                <button type="button" className="cc-btn-primary" onMouseDown={(e) => { e.preventDefault(); insertLink(); }}>Insert link</button>
+                <button type="button" className="cc-btn-soft" onMouseDown={(e) => { e.preventDefault(); setShowLink(false); }}>✕</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      <div
+        ref={editorRef}
+        contentEditable
+        suppressContentEditableWarning
+        className="cc-rich-content"
+        onFocus={() => { isFocused.current = true; }}
+        onBlur={() => { isFocused.current = false; syncOut(); }}
+        onInput={syncOut}
+      />
+    </div>
+  );
+}
 
 export default function Home() {
   const otpInputRefs = useRef<Array<HTMLInputElement | null>>([]);
@@ -1599,7 +1737,9 @@ export default function Home() {
                 eventCategory: draft.eventCategory,
                 channel: draft.channel,
                 subject: draft.subject,
+                header: draft.header,
                 body: draft.body,
+                templateFooter: draft.templateFooter,
               }
             : item,
         ),
@@ -1616,7 +1756,9 @@ export default function Home() {
                 waveStage: draft.waveStage,
                 channel: draft.channel,
                 subject: draft.subject,
+                header: draft.header,
                 body: draft.body,
+                templateFooter: draft.templateFooter,
               }
             : prev,
         );
@@ -1690,7 +1832,9 @@ export default function Home() {
           waveStage: draft.waveStage,
           channel: draft.channel,
           subject: draft.subject,
+          header: draft.header,
           body: draft.body,
+          templateFooter: draft.templateFooter,
           status: "Draft",
           updated: "Just now",
         },
@@ -1815,7 +1959,9 @@ export default function Home() {
         waveStage: current.waveStage,
         channel: current.channel,
         subject: current.subject,
+        header: current.header ?? "",
         body: current.body,
+        templateFooter: current.templateFooter ?? "",
       },
     }));
     setEditingTemplateByJob((prev) => ({ ...prev, [jobKey]: templateId }));
@@ -2705,7 +2851,7 @@ export default function Home() {
                   <p>Populate the template with event type, life update category, product, and recommendation details.</p>
                 </div>
                 <div className="cc-inline-actions">
-                  <button className="cc-btn-soft" onClick={() => setViewingTemplate({ id: "__preview__", updated: new Date().toLocaleDateString("en-GB"), name: templateDraft.name || "(untitled)", templateCategory: templateDraft.templateCategory, product: templateDraft.product, eventCategory: templateDraft.eventCategory, waveStage: templateDraft.waveStage, channel: templateDraft.channel, subject: templateDraft.subject, body: templateDraft.body, status: "draft" })}>Preview</button>
+                  <button className="cc-btn-soft" onClick={() => setViewingTemplate({ id: "__preview__", updated: new Date().toLocaleDateString("en-GB"), name: templateDraft.name || "(untitled)", templateCategory: templateDraft.templateCategory, product: templateDraft.product, eventCategory: templateDraft.eventCategory, waveStage: templateDraft.waveStage, channel: templateDraft.channel, subject: templateDraft.subject, header: templateDraft.header, body: templateDraft.body, templateFooter: templateDraft.templateFooter, status: "draft" })}>Preview</button>
                   <button className="cc-btn-primary" onClick={() => createTemplate(config.jobKey)}>{editingTemplate ? "Save Template" : "Create Template"}</button>
                   <button className="cc-btn-soft" onClick={() => cancelTemplateEdit(config.jobKey)}>Close</button>
                 </div>
@@ -2760,9 +2906,17 @@ export default function Home() {
                   Subject
                   <input value={templateDraft.subject} onChange={(event) => updateTemplateDraft(config.jobKey, "subject", event.target.value)} placeholder="Email subject line" />
                 </label>
+                <label className="cc-template-subject-field">
+                  Email Header <span className="cc-field-note">(optional banner line at the top of the email)</span>
+                  <input value={templateDraft.header} onChange={(event) => updateTemplateDraft(config.jobKey, "header", event.target.value)} placeholder="e.g. Congratulations on your new role! 🎉" />
+                </label>
                 <label className="cc-template-body-field">
                   Template Body
-                  <textarea value={templateDraft.body} onChange={(event) => updateTemplateDraft(config.jobKey, "body", event.target.value)} placeholder="Write the email template content here..." rows={8} />
+                  <RichBodyEditor value={templateDraft.body} onChange={(html) => updateTemplateDraft(config.jobKey, "body", html)} />
+                </label>
+                <label className="cc-template-subject-field">
+                  Template Footer <span className="cc-field-note">(optional closing note before the global signature)</span>
+                  <input value={templateDraft.templateFooter} onChange={(event) => updateTemplateDraft(config.jobKey, "templateFooter", event.target.value)} placeholder="e.g. This offer is valid until 31 May 2026." />
                 </label>
               </div>
             </div>
@@ -2786,7 +2940,17 @@ export default function Home() {
                 <span><strong>Channel:</strong> {viewingTemplate.channel}</span>
               </div>
               <h4>{applyPreviewTokens(viewingTemplate.subject)}</h4>
-              <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: "0.9rem", lineHeight: "1.6", margin: "0 0 0" }}>{applyPreviewTokens(viewingTemplate.body)}</pre>
+              {viewingTemplate.header ? (
+                <p className="cc-preview-header">{applyPreviewTokens(viewingTemplate.header)}</p>
+              ) : null}
+              <div
+                className="cc-rich-preview-body"
+                // eslint-disable-next-line react/no-danger
+                dangerouslySetInnerHTML={{ __html: applyPreviewTokens(viewingTemplate.body) }}
+              />
+              {viewingTemplate.templateFooter ? (
+                <p className="cc-preview-template-footer">{applyPreviewTokens(viewingTemplate.templateFooter)}</p>
+              ) : null}
               {globalSignature ? (
                 <p style={{ whiteSpace: "pre-line", marginTop: "20px", paddingTop: "14px", borderTop: "1px solid var(--cc-border, #e5e7eb)", fontSize: "0.875rem" }}>{globalSignature}</p>
               ) : null}
@@ -3309,7 +3473,16 @@ export default function Home() {
     return (
       <main className="cc-auth-shell">
         <section className="cc-auth-left">
-          <p className="cc-auth-brand">OneEngage</p>
+          <div className="cc-auth-brand">
+            <div className="cc-auth-brand-mark">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="https://sterling.ng/wp-content/uploads/2023/04/Onebank-ico.svg" alt="Sterling" className="cc-auth-brand-logo" />
+            </div>
+            <div>
+              <strong className="cc-auth-brand-name">OneEngage</strong>
+              <span className="cc-auth-brand-tagline">by Sterling Bank</span>
+            </div>
+          </div>
           <h1>Intelligent customer engagement</h1>
           <p>Autonomous workflows for existing and inactive customers, with manual controls for support operations.</p>
           <ul>
