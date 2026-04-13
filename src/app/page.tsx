@@ -61,6 +61,17 @@ function formatWaveStageLabel(jobKey: string, waveStage: WaveStage): string {
   return "Day-of / Follow-up";
 }
 
+function applyPreviewTokens(text: string): string {
+  return text
+    .replace(/\{\{FirstName\}\}/gi, "Adaobi")
+    .replace(/\{\{LastName\}\}/gi, "Okafor")
+    .replace(/\{\{AccountNumber\}\}/gi, "0012345678")
+    .replace(/\{\{Amount\}\}/gi, "₦150,000")
+    .replace(/\{\{ProductName\}\}/gi, "SterlingOne Savings")
+    .replace(/\{\{BankName\}\}/gi, "Sterling Bank")
+    .replace(/\{\{Date\}\}/gi, new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }));
+}
+
 type TemplateRow = {
   id: string;
   templateCode?: string;
@@ -807,6 +818,8 @@ export default function Home() {
     "inactive-onebank": null,
   });
   const [viewingTemplate, setViewingTemplate] = useState<TemplateRow | null>(null);
+  const [globalSignature, setGlobalSignature] = useState<string>("Warm regards,\nThe Sterling Team");
+  const [globalFooter, setGlobalFooter] = useState<string>("Sterling Bank Limited · Sterling Towers, 20 Marina, Lagos · RC 6253");
   const [txCustomerOptions, setTxCustomerOptions] = useState<CustomerOption[]>([]);
   const [txForm, setTxForm] = useState<TxForm>({
     accountNumber: "",
@@ -1886,7 +1899,7 @@ export default function Home() {
         <section className="cc-banner cc-banner-plain cc-reveal">
           <div>
             <p className="cc-banner-kicker">Live overview</p>
-            <h2 className="cc-banner-title">AI Sales Agent Command Centre</h2>
+            <h2 className="cc-banner-title">OneEngage Command Centre</h2>
             <p className="cc-banner-sub">Switch modules on or off and monitor live activity from one place.</p>
           </div>
         </section>
@@ -2692,6 +2705,7 @@ export default function Home() {
                   <p>Populate the template with event type, life update category, product, and recommendation details.</p>
                 </div>
                 <div className="cc-inline-actions">
+                  <button className="cc-btn-soft" onClick={() => setViewingTemplate({ id: "__preview__", updated: new Date().toLocaleDateString("en-GB"), name: templateDraft.name || "(untitled)", templateCategory: templateDraft.templateCategory, product: templateDraft.product, eventCategory: templateDraft.eventCategory, waveStage: templateDraft.waveStage, channel: templateDraft.channel, subject: templateDraft.subject, body: templateDraft.body, status: "draft" })}>Preview</button>
                   <button className="cc-btn-primary" onClick={() => createTemplate(config.jobKey)}>{editingTemplate ? "Save Template" : "Create Template"}</button>
                   <button className="cc-btn-soft" onClick={() => cancelTemplateEdit(config.jobKey)}>Close</button>
                 </div>
@@ -2771,8 +2785,14 @@ export default function Home() {
                 <span><strong>{config.jobKey === "existing-migration" ? "Trigger Stage" : "Wave"}:</strong> {formatWaveStageLabel(config.jobKey, viewingTemplate.waveStage)}</span>
                 <span><strong>Channel:</strong> {viewingTemplate.channel}</span>
               </div>
-              <h4>{viewingTemplate.subject}</h4>
-              <p>{viewingTemplate.body}</p>
+              <h4>{applyPreviewTokens(viewingTemplate.subject)}</h4>
+              <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: "0.9rem", lineHeight: "1.6", margin: "0 0 0" }}>{applyPreviewTokens(viewingTemplate.body)}</pre>
+              {globalSignature ? (
+                <p style={{ whiteSpace: "pre-line", marginTop: "20px", paddingTop: "14px", borderTop: "1px solid var(--cc-border, #e5e7eb)", fontSize: "0.875rem" }}>{globalSignature}</p>
+              ) : null}
+              {globalFooter ? (
+                <p style={{ fontSize: "0.75rem", color: "#888", marginTop: "8px" }}>{globalFooter}</p>
+              ) : null}
             </div>
           </section>
         ) : null}
@@ -3085,6 +3105,24 @@ export default function Home() {
             </ul>
           </article>
         </section>
+
+        <section className="cc-panel">
+          <div className="cc-panel-head">
+            <h3>Message Branding</h3>
+            <span>global signature and footer applied to all outbound messages</span>
+          </div>
+          <div className="cc-form-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
+            <label>
+              Global Signature
+              <textarea rows={3} value={globalSignature} onChange={(event) => setGlobalSignature(event.target.value)} placeholder={"e.g. Warm regards,\nThe Sterling Team"} style={{ resize: "vertical" }} />
+            </label>
+            <label>
+              Global Footer
+              <textarea rows={3} value={globalFooter} onChange={(event) => setGlobalFooter(event.target.value)} placeholder="e.g. Sterling Bank Limited · 20 Marina, Lagos" style={{ resize: "vertical" }} />
+            </label>
+          </div>
+          <p style={{ fontSize: "0.8rem", color: "#777", marginTop: "10px" }}>Teams may override the signature per template in the template composer. Changes here apply to all new previews immediately.</p>
+        </section>
       </div>
     );
   }
@@ -3271,7 +3309,7 @@ export default function Home() {
     return (
       <main className="cc-auth-shell">
         <section className="cc-auth-left">
-          <p className="cc-auth-brand">AI Sales Agent</p>
+          <p className="cc-auth-brand">OneEngage</p>
           <h1>Intelligent customer engagement</h1>
           <p>Autonomous workflows for existing and inactive customers, with manual controls for support operations.</p>
           <ul>
@@ -3285,7 +3323,7 @@ export default function Home() {
           {authStep === "credentials" ? (
             <form className="cc-auth-card cc-reveal" onSubmit={handleCredentialsSubmit}>
               <h2>Welcome back</h2>
-              <p>Sign in to the AI Sales Agent command centre.</p>
+              <p>Sign in to the OneEngage command centre.</p>
               <label>
                 Username
                 <input value={username} onChange={(event) => setUsername(event.target.value)} placeholder="jsmith" />
@@ -3338,7 +3376,7 @@ export default function Home() {
     <main className="cc-app-shell">
       <aside className="cc-sidebar">
         <div className="cc-sidebar-brand">
-          <strong>AI Sales Agent</strong>
+          <strong>OneEngage</strong>
           <span>Command Centre</span>
         </div>
 
@@ -3400,7 +3438,7 @@ export default function Home() {
         <header className="cc-topbar">
           <div>
             <h1>{PAGE_TITLES[activePage]}</h1>
-            <p>AI Sales Agent / {PAGE_TITLES[activePage]}</p>
+            <p>OneEngage / {PAGE_TITLES[activePage]}</p>
           </div>
           <div className="cc-topbar-actions">
             {renderCustomerToggle()}
