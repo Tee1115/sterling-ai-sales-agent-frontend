@@ -437,7 +437,7 @@ const TEMPLATE_PRODUCTS = ["Savings", "Current", "Loan", "Cards", "Investment", 
 const TEMPLATE_LIBRARY_CATEGORIES = ["Life Event", "Product Category", "Recommendation Category"];
 
 const TEMPLATE_EVENT_CATEGORIES: Record<string, string[]> = {
-  "existing-life-updates": ["New Job", "Loan", "School Fees", "Child Birth", "Wedding", "Salary Increase"],
+  "existing-life-updates": ["New Job", "Loan", "School Fees", "Child Birth", "Wedding", "Salary Increase", "Passport Expiry", "Driver's License Expiry"],
   "existing-migration": ["Account Tier Balance Threshold", "30 Days To Maturity", "Maturity Day Follow-up", "Child Turns 18"],
   "inactive-transaction": ["No Debit Activity", "No Credit Activity", "Dormancy Risk", "Low Balance", "Card Inactive"],
   "inactive-onebank": ["No Login", "Feature Discovery", "Abandoned Journey", "Push Failed", "Reactivation"],
@@ -507,6 +507,13 @@ type BackendTemplateListItem = {
   template_code: string;
   subject_template: string;
   body_template: string;
+  header_image?: string;
+  template_footer?: string;
+  footer_image?: string;
+  footer_text_above?: string;
+  footer_text_below?: string;
+  video_thumbnail?: string;
+  gif_thumbnail?: string;
   active?: number;
   created_at?: string;
 };
@@ -518,6 +525,13 @@ type BackendTemplateUpsertResponse = {
     template_code: string;
     subject_template: string;
     body_template: string;
+    header_image?: string;
+    template_footer?: string;
+    footer_image?: string;
+    footer_text_above?: string;
+    footer_text_below?: string;
+    video_thumbnail?: string;
+    gif_thumbnail?: string;
     active?: number;
   };
 };
@@ -527,6 +541,13 @@ type BackendTemplateDetail = {
   template_code: string;
   subject_template: string;
   body_template: string;
+  header_image?: string;
+  template_footer?: string;
+  footer_image?: string;
+  footer_text_above?: string;
+  footer_text_below?: string;
+  video_thumbnail?: string;
+  gif_thumbnail?: string;
 };
 
 type BackendWorkflowJob = {
@@ -682,6 +703,8 @@ function mapBackendTemplatesToRows(items: BackendTemplateListItem[]): TemplateRo
       MATURITY_DAY_OF_FOLLOW_UP: "Maturity Day Follow-up",
       CHILD_TURNS_18: "Child Turns 18",
       MIGRATION_UPGRADE: "Account Tier Balance Threshold",
+      PASSPORT_EXPIRY_NOTICE: "Passport Expiry",
+      DRIVERS_LICENSE_EXPIRY_NOTICE: "Driver's License Expiry",
     };
     const waveByCode: Partial<Record<string, WaveStage>> = {
       ACCOUNT_TIER_BALANCE_THRESHOLD: "Wave 1",
@@ -706,7 +729,14 @@ function mapBackendTemplatesToRows(items: BackendTemplateListItem[]): TemplateRo
       waveStage: waveByCode[safeCode] || "Wave 1",
       channel: "Email",
       subject: item.subject_template,
+      headerImage: item.header_image ?? "",
       body: item.body_template,
+      templateFooter: item.template_footer ?? "",
+      footerImage: item.footer_image ?? "",
+      footerTextAbove: item.footer_text_above ?? "",
+      footerTextBelow: item.footer_text_below ?? "",
+      videoThumbnail: item.video_thumbnail ?? "",
+      gifThumbnail: item.gif_thumbnail ?? "",
       status: item.active === 0 ? "Draft" : "Active",
       updated: item.created_at ? new Date(item.created_at).toLocaleDateString() : "From API",
     };
@@ -726,6 +756,9 @@ const TEMPLATE_CODE_BY_JOB_EVENT: Record<string, Record<string, string>> = {
   "existing-life-updates": {
     "salary increase": "SALARY_INCREASE",
     "school fees": "SCHOOL_FEES",
+    "passport expiry": "PASSPORT_EXPIRY_NOTICE",
+    "driver's license expiry": "DRIVERS_LICENSE_EXPIRY_NOTICE",
+    "drivers license expiry": "DRIVERS_LICENSE_EXPIRY_NOTICE",
     "loan": "LOAN_REPAYMENT",
     "new job": "SALARY_INCREASE",
     "wedding": "SALARY_INCREASE",
@@ -1816,6 +1849,13 @@ export default function Home() {
           body: JSON.stringify({
             subject_template: draft.subject,
             body_template: draft.body,
+            header_image: draft.headerImage,
+            template_footer: draft.templateFooter,
+            footer_image: draft.footerImage,
+            footer_text_above: draft.footerTextAbove,
+            footer_text_below: draft.footerTextBelow,
+            video_thumbnail: draft.videoThumbnail,
+            gif_thumbnail: draft.gifThumbnail,
             active: true,
           }),
         });
@@ -1918,6 +1958,13 @@ export default function Home() {
           template_code: templateCode,
           subject_template: draft.subject,
           body_template: draft.body,
+          header_image: draft.headerImage,
+          template_footer: draft.templateFooter,
+          footer_image: draft.footerImage,
+          footer_text_above: draft.footerTextAbove,
+          footer_text_below: draft.footerTextBelow,
+          video_thumbnail: draft.videoThumbnail,
+          gif_thumbnail: draft.gifThumbnail,
           active: true,
         }),
       });
@@ -2006,6 +2053,13 @@ export default function Home() {
         name: detail.template_code.replace(/_/g, " "),
         subject: detail.subject_template,
         body: detail.body_template,
+        headerImage: detail.header_image ?? template.headerImage,
+        templateFooter: detail.template_footer ?? template.templateFooter,
+        footerImage: detail.footer_image ?? template.footerImage,
+        footerTextAbove: detail.footer_text_above ?? template.footerTextAbove,
+        footerTextBelow: detail.footer_text_below ?? template.footerTextBelow,
+        videoThumbnail: detail.video_thumbnail ?? template.videoThumbnail,
+        gifThumbnail: detail.gif_thumbnail ?? template.gifThumbnail,
       });
     } catch {
       setViewingTemplate(template);
@@ -3664,14 +3718,11 @@ export default function Home() {
         <section className="cc-auth-left">
           <div className="cc-auth-brand">
             <div className="cc-auth-brand-mark">
-              <svg className="cc-auth-brand-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-label="Sterling">
-                <path d="M72 18 C72 18 58 10 40 14 C22 18 16 30 20 40 C24 50 38 52 52 54 C66 56 78 60 76 72 C74 82 60 90 42 88 C30 86 20 80 16 72" fill="none" stroke="#00975b" strokeWidth="10" strokeLinecap="round"/>
-                <path d="M28 82 C28 82 42 90 62 86 C78 82 84 70 80 60 C76 50 62 48 48 46 C34 44 22 40 24 28 C26 18 40 10 58 12 C70 14 80 20 84 28" fill="none" stroke="#d0ad3c" strokeWidth="10" strokeLinecap="round"/>
-              </svg>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/sterling-logo-icon.png" alt="Sterling" className="cc-auth-brand-logo" />
             </div>
             <div>
               <strong className="cc-auth-brand-name">OneEngage</strong>
-              <span className="cc-auth-brand-tagline">by Sterling Bank</span>
             </div>
           </div>
           <h1>Intelligent customer engagement</h1>
@@ -3740,13 +3791,8 @@ export default function Home() {
     <main className="cc-app-shell">
       <aside className="cc-sidebar">
         <div className="cc-sidebar-brand">
-          {/* Sterling two-colour brand mark: green #00975b + gold #d0ad3c */}
-          <svg className="cc-sidebar-brand-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-label="Sterling">
-            {/* Green upper arc — top half of the S */}
-            <path d="M72 18 C72 18 58 10 40 14 C22 18 16 30 20 40 C24 50 38 52 52 54 C66 56 78 60 76 72 C74 82 60 90 42 88 C30 86 20 80 16 72" fill="none" stroke="#00975b" strokeWidth="10" strokeLinecap="round"/>
-            {/* Gold lower arc — bottom half of the S */}
-            <path d="M28 82 C28 82 42 90 62 86 C78 82 84 70 80 60 C76 50 62 48 48 46 C34 44 22 40 24 28 C26 18 40 10 58 12 C70 14 80 20 84 28" fill="none" stroke="#d0ad3c" strokeWidth="10" strokeLinecap="round"/>
-          </svg>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/sterling-logo-icon.png" alt="Sterling" className="cc-sidebar-brand-logo" />
           <strong>OneEngage</strong>
           <span>Command Centre</span>
         </div>

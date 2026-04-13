@@ -93,11 +93,11 @@ body {
 }
 
 .cc-auth-brand-mark {
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.32);
+  background: transparent;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -105,8 +105,8 @@ body {
 }
 
 .cc-auth-brand-logo {
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   border-radius: 999px;
 }
 
@@ -308,13 +308,14 @@ body {
 }
 
 .cc-sidebar-brand-logo {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.32);
-  padding: 4px;
+  background: transparent;
+  border: none;
+  padding: 0;
   margin-bottom: 4px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .cc-sidebar-brand strong {
