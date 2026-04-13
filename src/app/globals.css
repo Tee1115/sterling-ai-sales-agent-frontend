@@ -1594,6 +1594,9 @@ button.cc-nav-child.active {
   padding: 12px 14px;
   font-size: 0.82rem;
   font-family: inherit;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
   background: #fff;
 }
 
@@ -2493,10 +2496,18 @@ button.cc-nav-child.active {
   font-size: 0.82rem;
   color: #4f4f4f;
   margin: 10px 0 8px;
+  white-space: pre-wrap;
+  line-height: 1.65;
+  word-break: break-word;
 }
 
 .cc-preview-footer-text-under {
   color: #6d6d6d;
+}
+
+.cc-preview-footer-text a {
+  color: var(--cc-red);
+  text-decoration: underline;
 }
 
 .cc-result-detail-grid {

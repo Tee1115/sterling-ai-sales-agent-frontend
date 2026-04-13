@@ -72,6 +72,25 @@ function applyPreviewTokens(text: string): string {
     .replace(/\{\{Date\}\}/gi, new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }));
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function renderFooterTextHtml(text: string): string {
+  const tokenized = applyPreviewTokens(text);
+  const escaped = escapeHtml(tokenized);
+  const withLinks = escaped.replace(/(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi, (raw) => {
+    const href = raw.toLowerCase().startsWith("www.") ? `https://${raw}` : raw;
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer">${raw}</a>`;
+  });
+  return withLinks.replace(/\n/g, "<br />");
+}
+
 function normalizeLinkUrl(input: string): string {
   const trimmed = input.trim();
   if (!trimmed) return "";
@@ -3191,9 +3210,21 @@ export default function Home() {
                   ) : null}
                 </div>
               ) : null}
-              {viewingTemplate.footerTextAbove ? <p className="cc-preview-footer-text">{applyPreviewTokens(viewingTemplate.footerTextAbove)}</p> : null}
+              {viewingTemplate.footerTextAbove ? (
+                <p
+                  className="cc-preview-footer-text"
+                  // eslint-disable-next-line react/no-danger
+                  dangerouslySetInnerHTML={{ __html: renderFooterTextHtml(viewingTemplate.footerTextAbove) }}
+                />
+              ) : null}
               {viewingTemplate.footerImage ? <img className="cc-preview-banner" src={viewingTemplate.footerImage} alt="Footer banner" /> : null}
-              {viewingTemplate.footerTextBelow ? <p className="cc-preview-footer-text cc-preview-footer-text-under">{applyPreviewTokens(viewingTemplate.footerTextBelow)}</p> : null}
+              {viewingTemplate.footerTextBelow ? (
+                <p
+                  className="cc-preview-footer-text cc-preview-footer-text-under"
+                  // eslint-disable-next-line react/no-danger
+                  dangerouslySetInnerHTML={{ __html: renderFooterTextHtml(viewingTemplate.footerTextBelow) }}
+                />
+              ) : null}
               {globalSignature ? (
                 <p style={{ whiteSpace: "pre-line", marginTop: "20px", paddingTop: "14px", borderTop: "1px solid var(--cc-border, #e5e7eb)", fontSize: "0.875rem" }}>{globalSignature}</p>
               ) : null}
