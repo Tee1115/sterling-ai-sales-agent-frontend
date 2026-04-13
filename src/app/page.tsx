@@ -429,12 +429,12 @@ const DOWNTIME_OVERVIEW = [
 ];
 
 const UPTIME_HISTORY = [
-  { label: "W1", operational: 26, degraded: 3, outage: 1 },
-  { label: "W2", operational: 28, degraded: 2, outage: 0 },
-  { label: "W3", operational: 25, degraded: 4, outage: 1 },
-  { label: "W4", operational: 27, degraded: 3, outage: 0 },
-  { label: "W5", operational: 29, degraded: 1, outage: 0 },
-  { label: "W6", operational: 28, degraded: 2, outage: 0 },
+  { label: "Week 1", operational: 26, degraded: 3, outage: 1 },
+  { label: "Week 2", operational: 28, degraded: 2, outage: 0 },
+  { label: "Week 3", operational: 25, degraded: 4, outage: 1 },
+  { label: "Week 4", operational: 27, degraded: 3, outage: 0 },
+  { label: "Week 5", operational: 29, degraded: 1, outage: 0 },
+  { label: "Week 6", operational: 28, degraded: 2, outage: 0 },
 ];
 
 const ALERT_ROWS: AlertRow[] = [
@@ -456,7 +456,20 @@ const TEMPLATE_PRODUCTS = ["Savings", "Current", "Loan", "Cards", "Investment", 
 const TEMPLATE_LIBRARY_CATEGORIES = ["Life Event", "Product Category", "Recommendation Category"];
 
 const TEMPLATE_EVENT_CATEGORIES: Record<string, string[]> = {
-  "existing-life-updates": ["New Job", "Loan", "School Fees", "Child Birth", "Wedding", "Salary Increase", "Passport Expiry", "Driver's License Expiry"],
+  "existing-life-updates": [
+    "New Job",
+    "Loan",
+    "School Fees",
+    "Child Birth",
+    "Wedding",
+    "Salary Increase",
+    "Passport Expiry",
+    "Driver's License Expiry",
+    "Anniversary",
+    "Graduation",
+    "New Child",
+    "Financial Milestone",
+  ],
   "existing-migration": ["Account Tier Balance Threshold", "30 Days To Maturity", "Maturity Day Follow-up", "Child Turns 18"],
   "inactive-transaction": ["No Debit Activity", "No Credit Activity", "Dormancy Risk", "Low Balance", "Card Inactive"],
   "inactive-onebank": ["No Login", "Feature Discovery", "Abandoned Journey", "Push Failed", "Reactivation"],
@@ -724,6 +737,10 @@ function mapBackendTemplatesToRows(items: BackendTemplateListItem[]): TemplateRo
       MIGRATION_UPGRADE: "Account Tier Balance Threshold",
       PASSPORT_EXPIRY_NOTICE: "Passport Expiry",
       DRIVERS_LICENSE_EXPIRY_NOTICE: "Driver's License Expiry",
+      ANNIVERSARY_OFFER: "Anniversary",
+      GRADUATION_OFFER: "Graduation",
+      NEW_CHILD_OFFER: "New Child",
+      FINANCIAL_MILESTONE_OFFER: "Financial Milestone",
     };
     const waveByCode: Partial<Record<string, WaveStage>> = {
       ACCOUNT_TIER_BALANCE_THRESHOLD: "Wave 1",
@@ -778,6 +795,10 @@ const TEMPLATE_CODE_BY_JOB_EVENT: Record<string, Record<string, string>> = {
     "passport expiry": "PASSPORT_EXPIRY_NOTICE",
     "driver's license expiry": "DRIVERS_LICENSE_EXPIRY_NOTICE",
     "drivers license expiry": "DRIVERS_LICENSE_EXPIRY_NOTICE",
+    "anniversary": "ANNIVERSARY_OFFER",
+    "graduation": "GRADUATION_OFFER",
+    "new child": "NEW_CHILD_OFFER",
+    "financial milestone": "FINANCIAL_MILESTONE_OFFER",
     "loan": "LOAN_REPAYMENT",
     "new job": "SALARY_INCREASE",
     "wedding": "SALARY_INCREASE",
@@ -811,6 +832,12 @@ const TEMPLATE_CODES_BY_MODULE: Record<string, Set<string>> = {
     "RENT_PAYMENT",
     "LOAN_REPAYMENT",
     "CHILD_TURNS_18",
+    "PASSPORT_EXPIRY_NOTICE",
+    "DRIVERS_LICENSE_EXPIRY_NOTICE",
+    "ANNIVERSARY_OFFER",
+    "GRADUATION_OFFER",
+    "NEW_CHILD_OFFER",
+    "FINANCIAL_MILESTONE_OFFER",
   ]),
   "existing-migration": new Set(["MIGRATION_UPGRADE", "ACCOUNT_TIER_BALANCE_THRESHOLD", "MATURITY_30_DAY_NOTICE", "MATURITY_DAY_OF_FOLLOW_UP", "CHILD_TURNS_18"]),
   "inactive-transaction": new Set(["REACTIVATION_PROMPT", "DORMANCY_SAVE"]),
