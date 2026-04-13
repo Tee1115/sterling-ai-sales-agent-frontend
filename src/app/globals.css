@@ -24,7 +24,7 @@ body {
   margin: 0;
   background: radial-gradient(1200px 700px at 90% -20%, #fde3e8 0%, transparent 50%), var(--cc-bg);
   color: var(--cc-ink);
-  font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: 'Century Gothic', 'AppleGothic', CenturyGothic, 'Trebuchet MS', sans-serif;
 }
 
 * {
@@ -95,7 +95,7 @@ body {
 .cc-auth-brand-mark {
   width: 46px;
   height: 46px;
-  border-radius: 12px;
+  border-radius: 999px;
   background: rgba(255, 255, 255, 0.18);
   border: 1px solid rgba(255, 255, 255, 0.32);
   display: flex;
@@ -105,9 +105,9 @@ body {
 }
 
 .cc-auth-brand-logo {
-  width: 28px;
-  height: 28px;
-  filter: brightness(0) invert(1);
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
 }
 
 .cc-auth-brand-name {
@@ -305,6 +305,16 @@ body {
   gap: 3px;
   border: none;
   box-shadow: 0 4px 16px rgba(200, 16, 46, 0.22);
+}
+
+.cc-sidebar-brand-logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  padding: 4px;
+  margin-bottom: 4px;
 }
 
 .cc-sidebar-brand strong {
@@ -2206,6 +2216,24 @@ button.cc-nav-child.active {
   color: #111;
 }
 
+.cc-rtb-select {
+  border: 1px solid var(--cc-line);
+  background: #fff;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  color: #444;
+  font-family: inherit;
+  line-height: 1.4;
+  transition: border-color 0.1s;
+  height: 28px;
+}
+
+.cc-rtb-select:hover {
+  border-color: var(--cc-red);
+}
+
 .cc-rtb-italic em {
   font-style: italic;
 }
@@ -2314,6 +2342,7 @@ button.cc-nav-child.active {
   outline: none;
   color: var(--cc-ink);
   border-radius: 0 0 10px 10px;
+  font-family: 'Century Gothic', 'AppleGothic', CenturyGothic, 'Trebuchet MS', sans-serif;
 }
 
 .cc-rich-content:focus {
@@ -2341,6 +2370,12 @@ button.cc-nav-child.active {
   margin: 0 0 0.5em;
 }
 
+.cc-rich-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+}
+
 /* ── Template form helper notes ───────────────────── */
 .cc-template-body-field > label,
 .cc-template-body-field {
@@ -2362,6 +2397,15 @@ button.cc-nav-child.active {
   line-height: 1.75;
   color: var(--cc-ink);
   margin: 0;
+}
+
+.cc-rich-preview-body-wrap {
+  background: #fff;
+  border: 1px solid #ece7e5;
+  border-radius: 12px;
+  padding: 16px 18px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  margin-bottom: 10px;
 }
 
 .cc-rich-preview-body h2 {
@@ -2403,6 +2447,55 @@ button.cc-nav-child.active {
   margin: 14px 0 0;
   padding-top: 10px;
   border-top: 1px dashed var(--cc-line);
+}
+
+.cc-preview-banner {
+  width: 100%;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid #ebe3e1;
+  margin: 6px 0 12px;
+  max-height: 180px;
+}
+
+.cc-preview-media-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.cc-preview-media-card {
+  border: 1px solid #ebe3e1;
+  border-radius: 10px;
+  padding: 8px;
+  background: #fff;
+}
+
+.cc-preview-media-card span {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--cc-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+
+.cc-preview-media-card img {
+  width: 100%;
+  border-radius: 8px;
+  max-height: 140px;
+  object-fit: cover;
+}
+
+.cc-preview-footer-text {
+  font-size: 0.82rem;
+  color: #4f4f4f;
+  margin: 10px 0 8px;
+}
+
+.cc-preview-footer-text-under {
+  color: #6d6d6d;
 }
 
 .cc-result-detail-grid {

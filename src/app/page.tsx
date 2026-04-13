@@ -72,6 +72,22 @@ function applyPreviewTokens(text: string): string {
     .replace(/\{\{Date\}\}/gi, new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }));
 }
 
+function normalizeLinkUrl(input: string): string {
+  const trimmed = input.trim();
+  if (!trimmed) return "";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(new Error("Failed to read image file"));
+    reader.readAsDataURL(file);
+  });
+}
+
 type TemplateRow = {
   id: string;
   templateCode?: string;
@@ -83,8 +99,14 @@ type TemplateRow = {
   channel: string;
   subject: string;
   header?: string;
+  headerImage?: string;
   body: string;
   templateFooter?: string;
+  footerImage?: string;
+  footerTextAbove?: string;
+  footerTextBelow?: string;
+  videoThumbnail?: string;
+  gifThumbnail?: string;
   status: string;
   updated: string;
 };
@@ -98,8 +120,14 @@ type TemplateDraft = {
   channel: string;
   subject: string;
   header: string;
+  headerImage: string;
   body: string;
   templateFooter: string;
+  footerImage: string;
+  footerTextAbove: string;
+  footerTextBelow: string;
+  videoThumbnail: string;
+  gifThumbnail: string;
 };
 
 type ModuleWavePlan = {
@@ -436,10 +464,10 @@ const INITIAL_TEMPLATES: Record<string, TemplateRow[]> = {
 };
 
 const INITIAL_TEMPLATE_DRAFTS: Record<string, TemplateDraft> = {
-  "existing-life-updates": { name: "", templateCategory: "Life Event", product: "Savings", eventCategory: "New Job", waveStage: "Wave 1", channel: "Email", subject: "", header: "", body: "", templateFooter: "" },
-  "existing-migration": { name: "", templateCategory: "Product Category", product: "Current", eventCategory: "Account Tier Balance Threshold", waveStage: "Wave 1", channel: "Email", subject: "", header: "", body: "", templateFooter: "" },
-  "inactive-transaction": { name: "", templateCategory: "Recommendation Category", product: "Savings", eventCategory: "Dormancy Risk", waveStage: "Wave 1", channel: "Email", subject: "", header: "", body: "", templateFooter: "" },
-  "inactive-onebank": { name: "", templateCategory: "Recommendation Category", product: "Current", eventCategory: "No Login", waveStage: "Wave 1", channel: "Email", subject: "", header: "", body: "", templateFooter: "" },
+  "existing-life-updates": { name: "", templateCategory: "Life Event", product: "Savings", eventCategory: "New Job", waveStage: "Wave 1", channel: "Email", subject: "", header: "", headerImage: "", body: "", templateFooter: "", footerImage: "", footerTextAbove: "", footerTextBelow: "", videoThumbnail: "", gifThumbnail: "" },
+  "existing-migration": { name: "", templateCategory: "Product Category", product: "Current", eventCategory: "Account Tier Balance Threshold", waveStage: "Wave 1", channel: "Email", subject: "", header: "", headerImage: "", body: "", templateFooter: "", footerImage: "", footerTextAbove: "", footerTextBelow: "", videoThumbnail: "", gifThumbnail: "" },
+  "inactive-transaction": { name: "", templateCategory: "Recommendation Category", product: "Savings", eventCategory: "Dormancy Risk", waveStage: "Wave 1", channel: "Email", subject: "", header: "", headerImage: "", body: "", templateFooter: "", footerImage: "", footerTextAbove: "", footerTextBelow: "", videoThumbnail: "", gifThumbnail: "" },
+  "inactive-onebank": { name: "", templateCategory: "Recommendation Category", product: "Current", eventCategory: "No Login", waveStage: "Wave 1", channel: "Email", subject: "", header: "", headerImage: "", body: "", templateFooter: "", footerImage: "", footerTextAbove: "", footerTextBelow: "", videoThumbnail: "", gifThumbnail: "" },
 };
 
 const MODULE_WAVE_PLAN_DEFAULTS: Record<string, ModuleWavePlan> = {
@@ -458,7 +486,7 @@ const MIGRATION_TRIGGER_PLAN_DEFAULTS: MigrationTriggerPlan = {
   postMaturityFollowUpDays: 2,
 };
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8002";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8001";
 const ENABLE_MANUAL_TRIGGER_PANEL = process.env.NEXT_PUBLIC_ENABLE_MANUAL_TRIGGER === "true";
 const ENABLE_DEMO_SEED_BUTTON = process.env.NEXT_PUBLIC_ENABLE_DEMO_SEED === "true";
 const V2_ENDPOINTS = {
@@ -800,6 +828,7 @@ function RichBodyEditor({ value, onChange }: { value: string; onChange: (html: s
   const [showLink, setShowLink] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
   const [linkText, setLinkText] = useState("");
+  const [fontSize, setFontSize] = useState("16px");
 
   // Seed content on mount only
   useEffect(() => {
@@ -853,12 +882,51 @@ function RichBodyEditor({ value, onChange }: { value: string; onChange: (html: s
     setShowEmoji(false);
   }
 
+  function insertFontSize(size: string) {
+    editorRef.current?.focus();
+    document.execCommand("fontSize", false, "7");
+    const fontEls = editorRef.current?.querySelectorAll("font[size='7']");
+    fontEls?.forEach((el) => {
+      const span = document.createElement("span");
+      span.style.fontSize = size;
+      span.innerHTML = el.innerHTML;
+      el.replaceWith(span);
+    });
+    syncOut();
+  }
+
+  function applyCase(mode: "uppercase" | "lowercase") {
+    editorRef.current?.focus();
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+    const text = sel.toString();
+    document.execCommand("insertText", false, mode === "uppercase" ? text.toUpperCase() : text.toLowerCase());
+    syncOut();
+  }
+
   function insertLink() {
-    if (!linkUrl.trim()) return;
+    const safeUrl = normalizeLinkUrl(linkUrl);
+    if (!safeUrl) return;
     editorRef.current?.focus();
     restoreRange();
-    const display = linkText.trim() || linkUrl;
-    document.execCommand("insertHTML", false, `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer">${display}</a>`);
+    const display = linkText.trim() || safeUrl;
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      range.deleteContents();
+      const anchor = document.createElement("a");
+      anchor.href = safeUrl;
+      anchor.target = "_blank";
+      anchor.rel = "noopener noreferrer";
+      anchor.textContent = display;
+      range.insertNode(anchor);
+      range.setStartAfter(anchor);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } else {
+      document.execCommand("insertHTML", false, `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${display}</a>`);
+    }
     syncOut();
     setLinkUrl("");
     setLinkText("");
@@ -876,10 +944,25 @@ function RichBodyEditor({ value, onChange }: { value: string; onChange: (html: s
         <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); exec("formatBlock", "h3"); }} title="Heading 2">H2</button>
         <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); exec("formatBlock", "p"); }} title="Normal text">¶</button>
         <span className="cc-rtb-sep" />
-        <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); exec("justifyLeft"); }} title="Align left">⬅</button>
-        <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); exec("justifyCenter"); }} title="Align centre">☰</button>
-        <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); exec("justifyRight"); }} title="Align right">➡</button>
-        <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); exec("justifyFull"); }} title="Justify">≡</button>
+        <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); exec("justifyLeft"); }} title="Align left">Left</button>
+        <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); exec("justifyCenter"); }} title="Align centre">Center</button>
+        <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); exec("justifyRight"); }} title="Align right">Right</button>
+        <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); exec("justifyFull"); }} title="Justify">Justify</button>
+        <span className="cc-rtb-sep" />
+        <select
+          className="cc-rtb-select"
+          value={fontSize}
+          title="Font size"
+          onMouseDown={(e) => { e.stopPropagation(); }}
+          onChange={(e) => { setFontSize(e.target.value); editorRef.current?.focus(); insertFontSize(e.target.value); }}
+        >
+          {["10px","12px","14px","16px","18px","20px","24px","28px","32px","36px"].map((s) => (
+            <option key={s} value={s}>{s.replace("px","pt")}</option>
+          ))}
+        </select>
+        <span className="cc-rtb-sep" />
+        <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); applyCase("uppercase"); }} title="UPPERCASE">AA</button>
+        <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); applyCase("lowercase"); }} title="lowercase">aa</button>
         <span className="cc-rtb-sep" />
         <div className="cc-rtb-popup-wrap">
           <button type="button" className="cc-rtb-btn" title="Insert emoji" onMouseDown={(e) => { e.preventDefault(); saveRange(); setShowEmoji((v) => !v); setShowLink(false); }}>😊</button>
@@ -1032,13 +1115,35 @@ export default function Home() {
       }
     });
 
-    setTemplatesByJob((prev) => ({
-      ...prev,
-      "existing-life-updates": grouped["existing-life-updates"].length > 0 ? grouped["existing-life-updates"] : prev["existing-life-updates"],
-      "existing-migration": grouped["existing-migration"].length > 0 ? grouped["existing-migration"] : prev["existing-migration"],
-      "inactive-transaction": grouped["inactive-transaction"].length > 0 ? grouped["inactive-transaction"] : prev["inactive-transaction"],
-      "inactive-onebank": grouped["inactive-onebank"].length > 0 ? grouped["inactive-onebank"] : prev["inactive-onebank"],
-    }));
+    setTemplatesByJob((prev) => {
+      const mergeModuleRows = (moduleKey: string): TemplateRow[] => {
+        const incoming = grouped[moduleKey];
+        if (incoming.length === 0) return prev[moduleKey];
+        const current = prev[moduleKey] ?? [];
+        return incoming.map((row) => {
+          const existing = current.find((item) => item.templateCode === row.templateCode || item.id === row.id);
+          return existing
+            ? {
+                ...row,
+                headerImage: existing.headerImage,
+                footerImage: existing.footerImage,
+                footerTextAbove: existing.footerTextAbove,
+                footerTextBelow: existing.footerTextBelow,
+                videoThumbnail: existing.videoThumbnail,
+                gifThumbnail: existing.gifThumbnail,
+              }
+            : row;
+        });
+      };
+
+      return {
+        ...prev,
+        "existing-life-updates": mergeModuleRows("existing-life-updates"),
+        "existing-migration": mergeModuleRows("existing-migration"),
+        "inactive-transaction": mergeModuleRows("inactive-transaction"),
+        "inactive-onebank": mergeModuleRows("inactive-onebank"),
+      };
+    });
   }
 
   async function syncWorkflowJobsFromBackend() {
@@ -1738,8 +1843,14 @@ export default function Home() {
                 channel: draft.channel,
                 subject: draft.subject,
                 header: draft.header,
+                headerImage: draft.headerImage,
                 body: draft.body,
                 templateFooter: draft.templateFooter,
+                footerImage: draft.footerImage,
+                footerTextAbove: draft.footerTextAbove,
+                footerTextBelow: draft.footerTextBelow,
+                videoThumbnail: draft.videoThumbnail,
+                gifThumbnail: draft.gifThumbnail,
               }
             : item,
         ),
@@ -1757,8 +1868,14 @@ export default function Home() {
                 channel: draft.channel,
                 subject: draft.subject,
                 header: draft.header,
+                headerImage: draft.headerImage,
                 body: draft.body,
                 templateFooter: draft.templateFooter,
+                footerImage: draft.footerImage,
+                footerTextAbove: draft.footerTextAbove,
+                footerTextBelow: draft.footerTextBelow,
+                videoThumbnail: draft.videoThumbnail,
+                gifThumbnail: draft.gifThumbnail,
               }
             : prev,
         );
@@ -1833,8 +1950,14 @@ export default function Home() {
           channel: draft.channel,
           subject: draft.subject,
           header: draft.header,
+          headerImage: draft.headerImage,
           body: draft.body,
           templateFooter: draft.templateFooter,
+          footerImage: draft.footerImage,
+          footerTextAbove: draft.footerTextAbove,
+          footerTextBelow: draft.footerTextBelow,
+          videoThumbnail: draft.videoThumbnail,
+          gifThumbnail: draft.gifThumbnail,
           status: "Draft",
           updated: "Just now",
         },
@@ -1924,6 +2047,24 @@ export default function Home() {
     }));
   }
 
+  async function handleTemplateImageUpload(jobKey: string, field: keyof TemplateDraft, fileList: FileList | null) {
+    const file = fileList?.[0];
+    if (!file) return;
+    const allowedTypes = ["image/png", "image/jpeg"];
+    if (!allowedTypes.includes(file.type)) {
+      setManualMessage("Only PNG or JPG images are supported for banners and thumbnails.");
+      window.setTimeout(() => setManualMessage(""), 3500);
+      return;
+    }
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      updateTemplateDraft(jobKey, field, dataUrl);
+    } catch {
+      setManualMessage("Unable to read image file. Please try another image.");
+      window.setTimeout(() => setManualMessage(""), 3500);
+    }
+  }
+
   function updateModuleWavePlan(jobKey: string, field: keyof ModuleWavePlan, value: string | number) {
     setModuleWavePlans((prev) => {
       const current = prev[jobKey] ?? MODULE_WAVE_PLAN_DEFAULTS[jobKey];
@@ -1960,8 +2101,14 @@ export default function Home() {
         channel: current.channel,
         subject: current.subject,
         header: current.header ?? "",
+        headerImage: current.headerImage ?? "",
         body: current.body,
         templateFooter: current.templateFooter ?? "",
+        footerImage: current.footerImage ?? "",
+        footerTextAbove: current.footerTextAbove ?? "",
+        footerTextBelow: current.footerTextBelow ?? "",
+        videoThumbnail: current.videoThumbnail ?? "",
+        gifThumbnail: current.gifThumbnail ?? "",
       },
     }));
     setEditingTemplateByJob((prev) => ({ ...prev, [jobKey]: templateId }));
@@ -2851,7 +2998,7 @@ export default function Home() {
                   <p>Populate the template with event type, life update category, product, and recommendation details.</p>
                 </div>
                 <div className="cc-inline-actions">
-                  <button className="cc-btn-soft" onClick={() => setViewingTemplate({ id: "__preview__", updated: new Date().toLocaleDateString("en-GB"), name: templateDraft.name || "(untitled)", templateCategory: templateDraft.templateCategory, product: templateDraft.product, eventCategory: templateDraft.eventCategory, waveStage: templateDraft.waveStage, channel: templateDraft.channel, subject: templateDraft.subject, header: templateDraft.header, body: templateDraft.body, templateFooter: templateDraft.templateFooter, status: "draft" })}>Preview</button>
+                  <button className="cc-btn-soft" onClick={() => setViewingTemplate({ id: "__preview__", updated: new Date().toLocaleDateString("en-GB"), name: templateDraft.name || "(untitled)", templateCategory: templateDraft.templateCategory, product: templateDraft.product, eventCategory: templateDraft.eventCategory, waveStage: templateDraft.waveStage, channel: templateDraft.channel, subject: templateDraft.subject, header: templateDraft.header, headerImage: templateDraft.headerImage, body: templateDraft.body, templateFooter: templateDraft.templateFooter, footerImage: templateDraft.footerImage, footerTextAbove: templateDraft.footerTextAbove, footerTextBelow: templateDraft.footerTextBelow, videoThumbnail: templateDraft.videoThumbnail, gifThumbnail: templateDraft.gifThumbnail, status: "draft" })}>Preview</button>
                   <button className="cc-btn-primary" onClick={() => createTemplate(config.jobKey)}>{editingTemplate ? "Save Template" : "Create Template"}</button>
                   <button className="cc-btn-soft" onClick={() => cancelTemplateEdit(config.jobKey)}>Close</button>
                 </div>
@@ -2907,8 +3054,8 @@ export default function Home() {
                   <input value={templateDraft.subject} onChange={(event) => updateTemplateDraft(config.jobKey, "subject", event.target.value)} placeholder="Email subject line" />
                 </label>
                 <label className="cc-template-subject-field">
-                  Email Header <span className="cc-field-note">(optional banner line at the top of the email)</span>
-                  <input value={templateDraft.header} onChange={(event) => updateTemplateDraft(config.jobKey, "header", event.target.value)} placeholder="e.g. Congratulations on your new role! 🎉" />
+                  Header Banner Image <span className="cc-field-note">(PNG or JPG, displayed at the top of the email)</span>
+                  <input type="file" accept="image/png,image/jpeg" onChange={(event) => { void handleTemplateImageUpload(config.jobKey, "headerImage", event.target.files); }} />
                 </label>
                 <label className="cc-template-body-field">
                   Template Body
@@ -2917,6 +3064,26 @@ export default function Home() {
                 <label className="cc-template-subject-field">
                   Template Footer <span className="cc-field-note">(optional closing note before the global signature)</span>
                   <input value={templateDraft.templateFooter} onChange={(event) => updateTemplateDraft(config.jobKey, "templateFooter", event.target.value)} placeholder="e.g. This offer is valid until 31 May 2026." />
+                </label>
+                <label className="cc-template-subject-field">
+                  Footer Text (above banner)
+                  <textarea rows={3} value={templateDraft.footerTextAbove} onChange={(event) => updateTemplateDraft(config.jobKey, "footerTextAbove", event.target.value)} placeholder="e.g. Need help? Call 07008220000" />
+                </label>
+                <label className="cc-template-subject-field">
+                  Footer Banner Image (PNG/JPG)
+                  <input type="file" accept="image/png,image/jpeg" onChange={(event) => { void handleTemplateImageUpload(config.jobKey, "footerImage", event.target.files); }} />
+                </label>
+                <label className="cc-template-subject-field">
+                  Footer Text (below banner)
+                  <textarea rows={3} value={templateDraft.footerTextBelow} onChange={(event) => updateTemplateDraft(config.jobKey, "footerTextBelow", event.target.value)} placeholder="e.g. Terms and conditions apply." />
+                </label>
+                <label className="cc-template-subject-field">
+                  Video Thumbnail Image (PNG/JPG)
+                  <input type="file" accept="image/png,image/jpeg" onChange={(event) => { void handleTemplateImageUpload(config.jobKey, "videoThumbnail", event.target.files); }} />
+                </label>
+                <label className="cc-template-subject-field">
+                  GIF Thumbnail Image (PNG/JPG)
+                  <input type="file" accept="image/png,image/jpeg" onChange={(event) => { void handleTemplateImageUpload(config.jobKey, "gifThumbnail", event.target.files); }} />
                 </label>
               </div>
             </div>
@@ -2939,18 +3106,40 @@ export default function Home() {
                 <span><strong>{config.jobKey === "existing-migration" ? "Trigger Stage" : "Wave"}:</strong> {formatWaveStageLabel(config.jobKey, viewingTemplate.waveStage)}</span>
                 <span><strong>Channel:</strong> {viewingTemplate.channel}</span>
               </div>
+              {viewingTemplate.headerImage ? <img className="cc-preview-banner" src={viewingTemplate.headerImage} alt="Header banner" /> : null}
               <h4>{applyPreviewTokens(viewingTemplate.subject)}</h4>
               {viewingTemplate.header ? (
                 <p className="cc-preview-header">{applyPreviewTokens(viewingTemplate.header)}</p>
               ) : null}
-              <div
-                className="cc-rich-preview-body"
-                // eslint-disable-next-line react/no-danger
-                dangerouslySetInnerHTML={{ __html: applyPreviewTokens(viewingTemplate.body) }}
-              />
+              <article className="cc-rich-preview-body-wrap">
+                <div
+                  className="cc-rich-preview-body"
+                  // eslint-disable-next-line react/no-danger
+                  dangerouslySetInnerHTML={{ __html: applyPreviewTokens(viewingTemplate.body) }}
+                />
+              </article>
               {viewingTemplate.templateFooter ? (
                 <p className="cc-preview-template-footer">{applyPreviewTokens(viewingTemplate.templateFooter)}</p>
               ) : null}
+              {viewingTemplate.videoThumbnail || viewingTemplate.gifThumbnail ? (
+                <div className="cc-preview-media-grid">
+                  {viewingTemplate.videoThumbnail ? (
+                    <div className="cc-preview-media-card">
+                      <span>Video Thumbnail</span>
+                      <img src={viewingTemplate.videoThumbnail} alt="Video thumbnail" />
+                    </div>
+                  ) : null}
+                  {viewingTemplate.gifThumbnail ? (
+                    <div className="cc-preview-media-card">
+                      <span>GIF Thumbnail</span>
+                      <img src={viewingTemplate.gifThumbnail} alt="GIF thumbnail" />
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+              {viewingTemplate.footerTextAbove ? <p className="cc-preview-footer-text">{applyPreviewTokens(viewingTemplate.footerTextAbove)}</p> : null}
+              {viewingTemplate.footerImage ? <img className="cc-preview-banner" src={viewingTemplate.footerImage} alt="Footer banner" /> : null}
+              {viewingTemplate.footerTextBelow ? <p className="cc-preview-footer-text cc-preview-footer-text-under">{applyPreviewTokens(viewingTemplate.footerTextBelow)}</p> : null}
               {globalSignature ? (
                 <p style={{ whiteSpace: "pre-line", marginTop: "20px", paddingTop: "14px", borderTop: "1px solid var(--cc-border, #e5e7eb)", fontSize: "0.875rem" }}>{globalSignature}</p>
               ) : null}
@@ -3475,8 +3664,10 @@ export default function Home() {
         <section className="cc-auth-left">
           <div className="cc-auth-brand">
             <div className="cc-auth-brand-mark">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="https://sterling.ng/wp-content/uploads/2023/04/Onebank-ico.svg" alt="Sterling" className="cc-auth-brand-logo" />
+              <svg className="cc-auth-brand-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-label="Sterling">
+                <path d="M72 18 C72 18 58 10 40 14 C22 18 16 30 20 40 C24 50 38 52 52 54 C66 56 78 60 76 72 C74 82 60 90 42 88 C30 86 20 80 16 72" fill="none" stroke="#00975b" strokeWidth="10" strokeLinecap="round"/>
+                <path d="M28 82 C28 82 42 90 62 86 C78 82 84 70 80 60 C76 50 62 48 48 46 C34 44 22 40 24 28 C26 18 40 10 58 12 C70 14 80 20 84 28" fill="none" stroke="#d0ad3c" strokeWidth="10" strokeLinecap="round"/>
+              </svg>
             </div>
             <div>
               <strong className="cc-auth-brand-name">OneEngage</strong>
@@ -3549,6 +3740,13 @@ export default function Home() {
     <main className="cc-app-shell">
       <aside className="cc-sidebar">
         <div className="cc-sidebar-brand">
+          {/* Sterling two-colour brand mark: green #00975b + gold #d0ad3c */}
+          <svg className="cc-sidebar-brand-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-label="Sterling">
+            {/* Green upper arc — top half of the S */}
+            <path d="M72 18 C72 18 58 10 40 14 C22 18 16 30 20 40 C24 50 38 52 52 54 C66 56 78 60 76 72 C74 82 60 90 42 88 C30 86 20 80 16 72" fill="none" stroke="#00975b" strokeWidth="10" strokeLinecap="round"/>
+            {/* Gold lower arc — bottom half of the S */}
+            <path d="M28 82 C28 82 42 90 62 86 C78 82 84 70 80 60 C76 50 62 48 48 46 C34 44 22 40 24 28 C26 18 40 10 58 12 C70 14 80 20 84 28" fill="none" stroke="#d0ad3c" strokeWidth="10" strokeLinecap="round"/>
+          </svg>
           <strong>OneEngage</strong>
           <span>Command Centre</span>
         </div>
