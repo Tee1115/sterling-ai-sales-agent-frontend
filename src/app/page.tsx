@@ -13,6 +13,7 @@ type PageId =
   | "existing-migration"
   | "inactive-transaction"
   | "inactive-onebank"
+  | "template-rules"
   | "reports"
   | "audit"
   | "settings";
@@ -40,9 +41,9 @@ type ReportRow = {
   owner: string;
 };
 
-type WaveStage = "Wave 1" | "Wave 2" | "Wave 3" | "Final Wave";
+type WaveStage = "Wave 1" | "Wave 2" | "Wave 3" | "Wave 4" | "Wave 5" | "Final Wave";
 
-const WAVE_STAGE_OPTIONS: WaveStage[] = ["Wave 1", "Wave 2", "Wave 3", "Final Wave"];
+const WAVE_STAGE_OPTIONS: WaveStage[] = ["Wave 1", "Wave 2", "Wave 3", "Wave 4", "Wave 5", "Final Wave"];
 
 function formatWaveStageLabel(jobKey: string, waveStage: WaveStage): string {
   if (jobKey !== "existing-migration") {
@@ -98,6 +99,14 @@ function normalizeLinkUrl(input: string): string {
   return `https://${trimmed}`;
 }
 
+function preferFilledValue(primary?: string, fallback?: string): string {
+  const normalizedPrimary = (primary ?? "").trim();
+  if (normalizedPrimary) {
+    return primary ?? "";
+  }
+  return fallback ?? "";
+}
+
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -110,11 +119,14 @@ function readFileAsDataUrl(file: File): Promise<string> {
 type TemplateRow = {
   id: string;
   templateCode?: string;
+  backendFamily?: "v2" | "v3";
   name: string;
   templateCategory: string;
   product: string;
   eventCategory: string;
   waveStage: WaveStage;
+  barrierType?: string;
+  notificationFrequencyDays?: number | null;
   channel: string;
   subject: string;
   header?: string;
@@ -136,6 +148,8 @@ type TemplateDraft = {
   product: string;
   eventCategory: string;
   waveStage: WaveStage;
+  barrierType: string;
+  notificationFrequencyDays: string;
   channel: string;
   subject: string;
   header: string;
@@ -196,10 +210,11 @@ type AlertRow = {
 };
 
 type UserRow = {
+  id: string;
   name: string;
   role: string;
   team: string;
-  status: string;
+  status: "Active" | "Suspended" | "Pending";
   lastSeen: string;
 };
 
@@ -245,6 +260,53 @@ type BulkCampaignRow = {
   recurrence: string;
 };
 
+type TemplateRule = {
+  rule_id: number;
+  template_code: string;
+  category: string;
+  priority: number;
+  is_default: boolean;
+  active: boolean;
+  active_from?: string;
+  active_to?: string;
+  customer_tier?: string;
+  account_type?: string;
+  recommended_product?: string;
+  balance_min?: number;
+  balance_max?: number;
+  currency?: string;
+  channel?: string;
+};
+
+type RuleDraft = {
+  template_code: string;
+  category: string;
+  priority: number;
+  is_default: boolean;
+  active: boolean;
+  active_from?: string;
+  active_to?: string;
+  customer_tier?: string;
+  account_type?: string;
+  recommended_product?: string;
+  balance_min?: string;
+  balance_max?: string;
+  currency?: string;
+  channel?: string;
+};
+
+type SelectionAuditEntry = {
+  audit_id: number;
+  customer_id: number;
+  account_number: string;
+  category: string;
+  recommended_product: string;
+  selected_template_code: string;
+  selected_rule_id: number | null;
+  was_fallback: boolean;
+  selection_reason: string;
+};
+
 const PAGE_TITLES: Record<PageId, string> = {
   dashboard: "Dashboard Overview",
   "agent-control": "Agent Control",
@@ -255,6 +317,7 @@ const PAGE_TITLES: Record<PageId, string> = {
   "existing-migration": "Lifecycle Triggers",
   "inactive-transaction": "Transaction Inactive",
   "inactive-onebank": "Onebank Inactive",
+  "template-rules": "Template Rules & Governance",
   reports: "Reports and Sent",
   audit: "Audit Logs",
   settings: "Settings",
@@ -266,7 +329,23 @@ const LIFE_EVENT_TRIGGER_OPTIONS = [
   { value: "fx_transfer", label: "FX Activity", narration: "FX TRANSFER USD", defaultAmount: "450000" },
   { value: "rent_payment", label: "Rent Payment", narration: "HOUSE RENT", defaultAmount: "225000" },
   { value: "loan_repayment", label: "Loan Repayment", narration: "LOAN REPAYMENT", defaultAmount: "125000" },
+  { value: "passport_expiry", label: "Passport Expiry", narration: "PASSPORT EXPIRY", defaultAmount: "0" },
+  { value: "drivers_license_expiry", label: "Driver's License Expiry", narration: "DRIVERS LICENSE EXPIRY", defaultAmount: "0" },
 ] as const;
+
+const RULE_CATEGORIES = [
+  { value: "salary_increase", label: "Salary Increase" },
+  { value: "school_fees", label: "School Fees" },
+  { value: "fx_transfer", label: "FX Activity" },
+  { value: "rent_payment", label: "Rent Payment" },
+  { value: "loan_repayment", label: "Loan Repayment" },
+  { value: "child_turns_18", label: "Child Turns 18" },
+  { value: "migration_upgrade", label: "Account Tier Migration" },
+];
+
+const CUSTOMER_TIERS = ["TIER1", "TIER2", "TIER3"];
+const ACCOUNT_TYPES = ["Savings", "Current", "Investment"];
+const RULE_CHANNELS = ["Email", "SMS", "Push"];
 
 const KPIS = [
   { label: "Active Workflows", value: "1,284", delta: "up", note: "+12% today" },
@@ -455,6 +534,207 @@ const TEMPLATE_PRODUCTS = ["Savings", "Current", "Loan", "Cards", "Investment", 
 
 const TEMPLATE_LIBRARY_CATEGORIES = ["Life Event", "Product Category", "Recommendation Category"];
 
+const INACTIVE_V3_TEMPLATE_DEFINITIONS: InactiveV3TemplateDefinition[] = [
+  {
+    moduleKey: "inactive-transaction",
+    code: "INACTIVE_WAVE_1",
+    label: "Wave 1 - Soft Re-introduction",
+    templateName: "Inactive Wave 1",
+    category: "INACTIVE_TRANSACTIONAL",
+    flowType: "Journey Wave",
+    waveStage: "Wave 1",
+    notificationFrequencyDays: 10,
+  },
+  {
+    moduleKey: "inactive-transaction",
+    code: "INACTIVE_WAVE_2",
+    label: "Wave 2 - Opportunity Highlight",
+    templateName: "Inactive Wave 2",
+    category: "INACTIVE_TRANSACTIONAL",
+    flowType: "Journey Wave",
+    waveStage: "Wave 2",
+    notificationFrequencyDays: 10,
+  },
+  {
+    moduleKey: "inactive-transaction",
+    code: "INACTIVE_WAVE_3",
+    label: "Wave 3 - Feedback Request",
+    templateName: "Inactive Wave 3",
+    category: "INACTIVE_TRANSACTIONAL",
+    flowType: "Journey Wave",
+    waveStage: "Wave 3",
+    notificationFrequencyDays: 10,
+  },
+  {
+    moduleKey: "inactive-transaction",
+    code: "INACTIVE_WAVE_4",
+    label: "Wave 4 - Personal Offer",
+    templateName: "Inactive Wave 4",
+    category: "INACTIVE_TRANSACTIONAL",
+    flowType: "Journey Wave",
+    waveStage: "Wave 4",
+    notificationFrequencyDays: 10,
+  },
+  {
+    moduleKey: "inactive-transaction",
+    code: "INACTIVE_WAVE_5",
+    label: "Wave 5 - Manager Outreach",
+    templateName: "Inactive Wave 5",
+    category: "INACTIVE_TRANSACTIONAL",
+    flowType: "Journey Wave",
+    waveStage: "Wave 5",
+    notificationFrequencyDays: 10,
+  },
+  {
+    moduleKey: "inactive-transaction",
+    code: "INACTIVE_WAVE_WELCOME_BACK",
+    label: "Reminder - Welcome Back",
+    templateName: "Inactive Welcome Back",
+    category: "INACTIVE_TRANSACTIONAL",
+    flowType: "Reminder",
+    waveStage: "Final Wave",
+    notificationFrequencyDays: null,
+  },
+  {
+    moduleKey: "inactive-transaction",
+    code: "TX_OFFER_CREATED",
+    label: "Offer - Created",
+    templateName: "Transactional Offer Created",
+    category: "INACTIVE_TRANSACTIONAL",
+    flowType: "Offer State",
+    waveStage: "Final Wave",
+    notificationFrequencyDays: 10,
+  },
+  {
+    moduleKey: "inactive-transaction",
+    code: "TX_OFFER_ACCEPTED",
+    label: "Offer - Accepted",
+    templateName: "Transactional Offer Accepted",
+    category: "INACTIVE_TRANSACTIONAL",
+    flowType: "Offer State",
+    waveStage: "Final Wave",
+    notificationFrequencyDays: null,
+  },
+  {
+    moduleKey: "inactive-transaction",
+    code: "TX_OFFER_DECLINED",
+    label: "Offer - Declined",
+    templateName: "Transactional Offer Declined",
+    category: "INACTIVE_TRANSACTIONAL",
+    flowType: "Offer State",
+    waveStage: "Final Wave",
+    notificationFrequencyDays: null,
+  },
+  {
+    moduleKey: "inactive-onebank",
+    code: "APP_DORMANT_PIN_RESET",
+    label: "Barrier - PIN Reset Help",
+    templateName: "App Dormant PIN Reset",
+    category: "MOBILE_APP_DORMANT",
+    flowType: "Barrier Outreach",
+    waveStage: "Wave 1",
+    barrierType: "TECHNICAL_PIN",
+    notificationFrequencyDays: 14,
+  },
+  {
+    moduleKey: "inactive-onebank",
+    code: "APP_DORMANT_NEW_DEVICE",
+    label: "Barrier - New Device Setup",
+    templateName: "App Dormant New Device",
+    category: "MOBILE_APP_DORMANT",
+    flowType: "Barrier Outreach",
+    waveStage: "Wave 1",
+    barrierType: "TECHNICAL_DEVICE",
+    notificationFrequencyDays: 14,
+  },
+  {
+    moduleKey: "inactive-onebank",
+    code: "APP_DORMANT_FEATURE_DISCOVERY",
+    label: "Barrier - Feature Discovery",
+    templateName: "App Dormant Feature Discovery",
+    category: "MOBILE_APP_DORMANT",
+    flowType: "Barrier Outreach",
+    waveStage: "Wave 1",
+    barrierType: "USABILITY",
+    notificationFrequencyDays: 14,
+  },
+  {
+    moduleKey: "inactive-onebank",
+    code: "APP_DORMANT_WELCOME_BACK",
+    label: "Reminder - Welcome Back",
+    templateName: "App Dormant Welcome Back",
+    category: "MOBILE_APP_DORMANT",
+    flowType: "Reminder",
+    waveStage: "Final Wave",
+    barrierType: "RE_ENGAGED",
+    notificationFrequencyDays: null,
+  },
+];
+
+function isInactiveModule(jobKey: string): jobKey is "inactive-transaction" | "inactive-onebank" {
+  return jobKey === "inactive-transaction" || jobKey === "inactive-onebank";
+}
+
+function getInactiveTemplateDefinitionByCode(code?: string | null): InactiveV3TemplateDefinition | undefined {
+  const normalized = (code ?? "").trim().toUpperCase();
+  return INACTIVE_V3_TEMPLATE_DEFINITIONS.find((item) => item.code === normalized);
+}
+
+function getInactiveTemplateDefinitionByLabel(jobKey: string, label?: string | null): InactiveV3TemplateDefinition | undefined {
+  if (!isInactiveModule(jobKey)) return undefined;
+  const normalized = (label ?? "").trim().toLowerCase();
+  return INACTIVE_V3_TEMPLATE_DEFINITIONS.find((item) => item.moduleKey === jobKey && item.label.toLowerCase() === normalized);
+}
+
+function getTemplateCategoryOptions(jobKey: string): string[] {
+  if (!isInactiveModule(jobKey)) {
+    return TEMPLATE_LIBRARY_CATEGORIES;
+  }
+  const categories = new Set(
+    INACTIVE_V3_TEMPLATE_DEFINITIONS.filter((item) => item.moduleKey === jobKey).map((item) => item.category),
+  );
+  return Array.from(categories);
+}
+
+function getInactiveFlowTypeOptions(jobKey: string): string[] {
+  if (!isInactiveModule(jobKey)) {
+    return TEMPLATE_PRODUCTS;
+  }
+  const flowTypes = new Set(
+    INACTIVE_V3_TEMPLATE_DEFINITIONS.filter((item) => item.moduleKey === jobKey).map((item) => item.flowType),
+  );
+  return Array.from(flowTypes);
+}
+
+function formatTemplateCategoryLabel(value: string): string {
+  if (value === "INACTIVE_TRANSACTIONAL") return "Inactive Transactional";
+  if (value === "MOBILE_APP_DORMANT") return "Mobile App Dormant";
+  return value;
+}
+
+function stripHtmlTags(value: string): string {
+  return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function applyInactiveTemplateSelection(jobKey: string, eventLabel: string, current: TemplateDraft): TemplateDraft {
+  const definition = getInactiveTemplateDefinitionByLabel(jobKey, eventLabel);
+  if (!definition) {
+    return current;
+  }
+  return {
+    ...current,
+    name: current.name || definition.templateName,
+    templateCategory: definition.category,
+    product: definition.flowType,
+    eventCategory: definition.label,
+    waveStage: definition.waveStage,
+    barrierType: definition.barrierType ?? "",
+    notificationFrequencyDays:
+      current.notificationFrequencyDays ||
+      (definition.notificationFrequencyDays == null ? "" : String(definition.notificationFrequencyDays)),
+  };
+}
+
 const TEMPLATE_EVENT_CATEGORIES: Record<string, string[]> = {
   "existing-life-updates": [
     "New Job",
@@ -471,8 +751,8 @@ const TEMPLATE_EVENT_CATEGORIES: Record<string, string[]> = {
     "Financial Milestone",
   ],
   "existing-migration": ["Account Tier Balance Threshold", "30 Days To Maturity", "Maturity Day Follow-up", "Child Turns 18"],
-  "inactive-transaction": ["No Debit Activity", "No Credit Activity", "Dormancy Risk", "Low Balance", "Card Inactive"],
-  "inactive-onebank": ["No Login", "Feature Discovery", "Abandoned Journey", "Push Failed", "Reactivation"],
+  "inactive-transaction": INACTIVE_V3_TEMPLATE_DEFINITIONS.filter((item) => item.moduleKey === "inactive-transaction").map((item) => item.label),
+  "inactive-onebank": INACTIVE_V3_TEMPLATE_DEFINITIONS.filter((item) => item.moduleKey === "inactive-onebank").map((item) => item.label),
 };
 
 const INITIAL_TEMPLATES: Record<string, TemplateRow[]> = {
@@ -486,20 +766,20 @@ const INITIAL_TEMPLATES: Record<string, TemplateRow[]> = {
     { id: "mg-3", name: "Maturity Day Follow-up", templateCode: "MATURITY_DAY_OF_FOLLOW_UP", templateCategory: "Recommendation Category", product: "Savings", eventCategory: "Maturity Day Follow-up", waveStage: "Final Wave", channel: "Email", subject: "Maturity is due today", body: "Your maturity date is due today. Complete your next action to finalize the lifecycle transition.", status: "Active", updated: "18 Mar 18:10" },
   ],
   "inactive-transaction": [
-    { id: "ti-1", name: "Reactivation Prompt", templateCategory: "Recommendation Category", product: "Savings", eventCategory: "Dormancy Risk", waveStage: "Wave 1", channel: "Email", subject: "We would love to see you transact again", body: "Restart activity on your account with one quick action and see the benefits immediately.", status: "Active", updated: "19 Mar 19:55" },
-    { id: "ti-2", name: "Dormancy Save", templateCategory: "Product Category", product: "Current", eventCategory: "No Debit Activity", waveStage: "Wave 3", channel: "Email", subject: "A quick way back to active banking", body: "Your account remains eligible for banking rewards. Re-engage now to stay active and protected.", status: "Draft", updated: "18 Mar 16:34" },
+    { id: "ti-1", templateCode: "INACTIVE_WAVE_1", backendFamily: "v3", name: "Inactive Wave 1", templateCategory: "INACTIVE_TRANSACTIONAL", product: "Journey Wave", eventCategory: "Wave 1 - Soft Re-introduction", waveStage: "Wave 1", notificationFrequencyDays: 10, channel: "Email", subject: "We would love to see you transact again", body: "Restart activity on your account with one quick action and see the benefits immediately.", status: "Active", updated: "19 Mar 19:55" },
+    { id: "ti-2", templateCode: "TX_OFFER_CREATED", backendFamily: "v3", name: "Transactional Offer Created", templateCategory: "INACTIVE_TRANSACTIONAL", product: "Offer State", eventCategory: "Offer - Created", waveStage: "Final Wave", notificationFrequencyDays: 10, channel: "Email", subject: "A quick way back to active banking", body: "Your account remains eligible for banking rewards. Re-engage now to stay active and protected.", status: "Draft", updated: "18 Mar 16:34" },
   ],
   "inactive-onebank": [
-    { id: "ob-1", name: "App Return", templateCategory: "Recommendation Category", product: "Current", eventCategory: "No Login", waveStage: "Wave 1", channel: "Email", subject: "Come back to Onebank", body: "There are new features waiting in Onebank. Sign in again and continue seamlessly.", status: "Active", updated: "19 Mar 18:21" },
-    { id: "ob-2", name: "Feature Spotlight", templateCategory: "Product Category", product: "Savings", eventCategory: "Feature Discovery", waveStage: "Wave 2", channel: "Email", subject: "See what you missed in Onebank", body: "Discover the tools and shortcuts you have missed since your last login to Onebank.", status: "Draft", updated: "17 Mar 15:44" },
+    { id: "ob-1", templateCode: "APP_DORMANT_PIN_RESET", backendFamily: "v3", name: "App Dormant PIN Reset", templateCategory: "MOBILE_APP_DORMANT", product: "Barrier Outreach", eventCategory: "Barrier - PIN Reset Help", waveStage: "Wave 1", barrierType: "TECHNICAL_PIN", notificationFrequencyDays: 14, channel: "Email", subject: "Come back to OneBank", body: "There are new features waiting in OneBank. Sign in again and continue seamlessly.", status: "Active", updated: "19 Mar 18:21" },
+    { id: "ob-2", templateCode: "APP_DORMANT_FEATURE_DISCOVERY", backendFamily: "v3", name: "App Dormant Feature Discovery", templateCategory: "MOBILE_APP_DORMANT", product: "Barrier Outreach", eventCategory: "Barrier - Feature Discovery", waveStage: "Wave 1", barrierType: "USABILITY", notificationFrequencyDays: 14, channel: "Email", subject: "See what you missed in OneBank", body: "Discover the tools and shortcuts you have missed since your last login to OneBank.", status: "Draft", updated: "17 Mar 15:44" },
   ],
 };
 
 const INITIAL_TEMPLATE_DRAFTS: Record<string, TemplateDraft> = {
-  "existing-life-updates": { name: "", templateCategory: "Life Event", product: "Savings", eventCategory: "New Job", waveStage: "Wave 1", channel: "Email", subject: "", header: "", headerImage: "", body: "", templateFooter: "", footerImage: "", footerTextAbove: "", footerTextBelow: "", videoThumbnail: "", gifThumbnail: "" },
-  "existing-migration": { name: "", templateCategory: "Product Category", product: "Current", eventCategory: "Account Tier Balance Threshold", waveStage: "Wave 1", channel: "Email", subject: "", header: "", headerImage: "", body: "", templateFooter: "", footerImage: "", footerTextAbove: "", footerTextBelow: "", videoThumbnail: "", gifThumbnail: "" },
-  "inactive-transaction": { name: "", templateCategory: "Recommendation Category", product: "Savings", eventCategory: "Dormancy Risk", waveStage: "Wave 1", channel: "Email", subject: "", header: "", headerImage: "", body: "", templateFooter: "", footerImage: "", footerTextAbove: "", footerTextBelow: "", videoThumbnail: "", gifThumbnail: "" },
-  "inactive-onebank": { name: "", templateCategory: "Recommendation Category", product: "Current", eventCategory: "No Login", waveStage: "Wave 1", channel: "Email", subject: "", header: "", headerImage: "", body: "", templateFooter: "", footerImage: "", footerTextAbove: "", footerTextBelow: "", videoThumbnail: "", gifThumbnail: "" },
+  "existing-life-updates": { name: "", templateCategory: "Life Event", product: "Savings", eventCategory: "New Job", waveStage: "Wave 1", barrierType: "", notificationFrequencyDays: "", channel: "Email", subject: "", header: "", headerImage: "", body: "", templateFooter: "", footerImage: "", footerTextAbove: "", footerTextBelow: "", videoThumbnail: "", gifThumbnail: "" },
+  "existing-migration": { name: "", templateCategory: "Product Category", product: "Current", eventCategory: "Account Tier Balance Threshold", waveStage: "Wave 1", barrierType: "", notificationFrequencyDays: "", channel: "Email", subject: "", header: "", headerImage: "", body: "", templateFooter: "", footerImage: "", footerTextAbove: "", footerTextBelow: "", videoThumbnail: "", gifThumbnail: "" },
+  "inactive-transaction": { name: "Inactive Wave 1", templateCategory: "INACTIVE_TRANSACTIONAL", product: "Journey Wave", eventCategory: "Wave 1 - Soft Re-introduction", waveStage: "Wave 1", barrierType: "", notificationFrequencyDays: "10", channel: "Email", subject: "", header: "", headerImage: "", body: "", templateFooter: "", footerImage: "", footerTextAbove: "", footerTextBelow: "", videoThumbnail: "", gifThumbnail: "" },
+  "inactive-onebank": { name: "App Dormant PIN Reset", templateCategory: "MOBILE_APP_DORMANT", product: "Barrier Outreach", eventCategory: "Barrier - PIN Reset Help", waveStage: "Wave 1", barrierType: "TECHNICAL_PIN", notificationFrequencyDays: "14", channel: "Email", subject: "", header: "", headerImage: "", body: "", templateFooter: "", footerImage: "", footerTextAbove: "", footerTextBelow: "", videoThumbnail: "", gifThumbnail: "" },
 };
 
 const MODULE_WAVE_PLAN_DEFAULTS: Record<string, ModuleWavePlan> = {
@@ -518,20 +798,73 @@ const MIGRATION_TRIGGER_PLAN_DEFAULTS: MigrationTriggerPlan = {
   postMaturityFollowUpDays: 2,
 };
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8001";
+const LEGACY_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const V2_API_BASE_URL = process.env.NEXT_PUBLIC_V2_API_BASE_URL ?? LEGACY_API_BASE_URL ?? "http://localhost:8101";
+const V3_API_BASE_URL = process.env.NEXT_PUBLIC_V3_API_BASE_URL ?? LEGACY_API_BASE_URL ?? "http://localhost:8102";
+
+function resolveMediaAssetUrl(raw?: string): string {
+  const value = (raw ?? "").trim();
+  if (!value) return "";
+  if (/^(data:|blob:|https?:\/\/)/i.test(value)) return value;
+
+  const v2Base = V2_API_BASE_URL.replace(/\/+$/, "");
+  const v3Base = V3_API_BASE_URL.replace(/\/+$/, "");
+  const legacyBase = (LEGACY_API_BASE_URL ?? "").replace(/\/+$/, "");
+
+  if (value.startsWith("/v3/")) return `${v3Base}${value}`;
+  if (value.startsWith("/v2/")) return `${v2Base}${value}`;
+  if (value.startsWith("/")) return `${v3Base || legacyBase || v2Base}${value}`;
+  return value;
+}
+
 const ENABLE_MANUAL_TRIGGER_PANEL = process.env.NEXT_PUBLIC_ENABLE_MANUAL_TRIGGER === "true";
 const ENABLE_DEMO_SEED_BUTTON = process.env.NEXT_PUBLIC_ENABLE_DEMO_SEED === "true";
+const SETTINGS_STORAGE_KEY = "ai-sales-agent:settings:v1";
 const V2_ENDPOINTS = {
-  emailTemplates: `${API_BASE_URL}/v2/email-templates`,
-  emailTemplateByCode: (code: string) => `${API_BASE_URL}/v2/email-templates/${encodeURIComponent(code)}`,
-  workflowJobs: `${API_BASE_URL}/v2/workflow-jobs`,
-  workflowJobByKey: (key: string) => `${API_BASE_URL}/v2/workflow-jobs/${encodeURIComponent(key)}`,
-  workflowJobTrigger: (key: string) => `${API_BASE_URL}/v2/workflow-jobs/${encodeURIComponent(key)}/trigger`,
-  bulkCampaignTrigger: `${API_BASE_URL}/v2/campaigns/bulk/trigger`,
-  customers: `${API_BASE_URL}/v2/customers`,
-  processTransaction: `${API_BASE_URL}/v2/process-transaction`,
-  lifecycleTriggersExecute: `${API_BASE_URL}/v2/lifecycle-triggers/execute`,
-  seedLifeEventHistory: `${API_BASE_URL}/v2/demo/seed-life-event-history`,
+  emailTemplates: `${V2_API_BASE_URL}/v2/email-templates`,
+  emailTemplateByCode: (code: string) => `${V2_API_BASE_URL}/v2/email-templates/${encodeURIComponent(code)}`,
+  workflowJobs: `${V2_API_BASE_URL}/v2/workflow-jobs`,
+  workflowJobByKey: (key: string) => `${V2_API_BASE_URL}/v2/workflow-jobs/${encodeURIComponent(key)}`,
+  workflowJobTrigger: (key: string) => `${V2_API_BASE_URL}/v2/workflow-jobs/${encodeURIComponent(key)}/trigger`,
+  runtimeConfig: `${V2_API_BASE_URL}/v2/runtime-config`,
+  bulkCampaignTrigger: `${V2_API_BASE_URL}/v2/campaigns/bulk/trigger`,
+  customers: `${V2_API_BASE_URL}/v2/customers`,
+  processTransaction: `${V2_API_BASE_URL}/v2/process-transaction`,
+  offersSend: `${V2_API_BASE_URL}/v2/offers/send`,
+  settings: `${V2_API_BASE_URL}/v2/settings`,
+  lifecycleTriggersExecute: `${V2_API_BASE_URL}/v2/lifecycle-triggers/execute`,
+  seedLifeEventHistory: `${V2_API_BASE_URL}/v2/demo/seed-life-event-history`,
+  // Template Rules endpoints
+  templateRules: `${V2_API_BASE_URL}/v2/template-rules`,
+  templateRuleById: (id: number) => `${V2_API_BASE_URL}/v2/template-rules/${id}`,
+  templateRuleConflicts: (category: string) => `${V2_API_BASE_URL}/v2/template-rules/conflicts?category=${encodeURIComponent(category)}`,
+  templateSelectionAudit: (customerId?: number, category?: string, limit?: number) => {
+    const params = new URLSearchParams();
+    if (customerId) params.append("customer_id", String(customerId));
+    if (category) params.append("category", category);
+    if (limit) params.append("limit", String(limit));
+    return `${V2_API_BASE_URL}/v2/template-selection-audit?${params.toString()}`;
+  },
+};
+
+const V3_ENDPOINTS = {
+  templates: (category?: string) => {
+    const params = new URLSearchParams();
+    if (category) params.append("category", category);
+    const query = params.toString();
+    return `${V3_API_BASE_URL}/v3/templates${query ? `?${query}` : ""}`;
+  },
+  templateByCode: (code: string) => `${V3_API_BASE_URL}/v3/templates/${encodeURIComponent(code)}`,
+  runtimeConfig: `${V3_API_BASE_URL}/v3/runtime-config`,
+  settings: `${V3_API_BASE_URL}/v3/settings`,
+  txInactiveStart: `${V3_API_BASE_URL}/v3/operator/transaction-inactive/start`,
+  txInactiveSignal: `${V3_API_BASE_URL}/v3/operator/transaction-inactive/signal`,
+  txInactiveOffer: `${V3_API_BASE_URL}/v3/operator/transaction-inactive/offer`,
+  txInactiveOfferAccept: `${V3_API_BASE_URL}/v3/operator/transaction-inactive/offer/accept-latest`,
+  txInactiveOfferDecline: `${V3_API_BASE_URL}/v3/operator/transaction-inactive/offer/decline-latest`,
+  mobileClassify: `${V3_API_BASE_URL}/v3/operator/mobile-app-inactive/classify`,
+  mobileConfirmReengagement: `${V3_API_BASE_URL}/v3/operator/mobile-app-inactive/confirm-reengagement`,
+  journeyStatus: (dormantId: number) => `${V3_API_BASE_URL}/v3/waves/${dormantId}/status`,
 };
 
 type BackendTemplateListItem = {
@@ -582,6 +915,36 @@ type BackendTemplateDetail = {
   gif_thumbnail?: string;
 };
 
+type BackendV3TemplateListItem = {
+  id: string;
+  template_code: string;
+  subject: string;
+  body_preview: string;
+  placeholders?: string[];
+};
+
+type BackendV3TemplateDetail = {
+  id: string;
+  template_code: string;
+  category: string;
+  wave_number?: number | null;
+  barrier_type?: string | null;
+  notification_frequency_days?: number | null;
+  subject: string;
+  body_html: string;
+  body_text?: string | null;
+  header_image?: string | null;
+  template_footer?: string | null;
+  footer_image?: string | null;
+  footer_text_above?: string | null;
+  footer_text_below?: string | null;
+  video_thumbnail?: string | null;
+  gif_thumbnail?: string | null;
+  placeholders?: string[];
+  ai_persona_hint?: string | null;
+  version: number;
+};
+
 type BackendWorkflowJob = {
   key: string;
   name: string;
@@ -589,6 +952,65 @@ type BackendWorkflowJob = {
   schedule_minutes?: number;
   last_run_at?: string | null;
   next_run_at?: string | null;
+};
+
+type RuntimeConfigResponse = {
+  app_env: string;
+  demo_endpoints_enabled: boolean;
+  env_values: {
+    ENABLE_DEMO_ENDPOINTS?: string | null;
+    NEXT_PUBLIC_ENABLE_MANUAL_TRIGGER?: string | null;
+    EMAIL_MODE?: string | null;
+    EFFECTIVE_EMAIL_MODE?: string | null;
+    PUBLIC_API_BASE_URL?: string | null;
+    PUBLIC_TEMPLATE_MEDIA_BASE_URL?: string | null;
+    STERLING_EMAIL_API_URL?: string | null;
+    STERLING_EMAIL_SOURCE?: string | null;
+    STERLING_EMAIL_PROVIDER?: string | null;
+    EMAIL_MODE_AUTO_STERLING_IPS?: string | null;
+    EMAIL_MODE_AUTO_FALLBACK_MODE?: string | null;
+  };
+  notes: Record<string, string>;
+};
+
+type UiSettingsUserRow = {
+  id: string;
+  name: string;
+  role: string;
+  team: string;
+  status: "Active" | "Suspended" | "Pending";
+  lastSeen: string;
+};
+
+type UiSettingsPayload = {
+  globalHeaderImage: string;
+  globalBannerImage: string;
+  globalSignature: string;
+  globalFooter: string;
+  inactivityTransactionDays: string;
+  inactivityOnebankDays: string;
+  quietWindowStart: string;
+  quietWindowEnd: string;
+  escalationAttempts: string;
+  users: UiSettingsUserRow[];
+};
+
+type SettingsResponse = {
+  status: string;
+  settings?: Partial<UiSettingsPayload>;
+  service?: string;
+};
+
+type InactiveV3TemplateDefinition = {
+  moduleKey: "inactive-transaction" | "inactive-onebank";
+  code: string;
+  label: string;
+  templateName: string;
+  category: string;
+  flowType: string;
+  waveStage: WaveStage;
+  barrierType?: string;
+  notificationFrequencyDays?: number | null;
 };
 
 const BULK_CAMPAIGN_TEMPLATE_COLUMNS = [
@@ -758,11 +1180,14 @@ function mapBackendTemplatesToRows(items: BackendTemplateListItem[]): TemplateRo
     return {
       id: String(item.template_id),
       templateCode: safeCode,
+      backendFamily: "v2",
       name: safeCode.replace(/_/g, " "),
       templateCategory: "Recommendation Category",
       product: "General",
       eventCategory: eventType || "General Event",
       waveStage: waveByCode[safeCode] || "Wave 1",
+      barrierType: "",
+      notificationFrequencyDays: null,
       channel: "Email",
       subject: item.subject_template,
       headerImage: item.header_image ?? "",
@@ -775,6 +1200,36 @@ function mapBackendTemplatesToRows(items: BackendTemplateListItem[]): TemplateRo
       gifThumbnail: item.gif_thumbnail ?? "",
       status: item.active === 0 ? "Draft" : "Active",
       updated: item.created_at ? new Date(item.created_at).toLocaleDateString() : "From API",
+    };
+  });
+}
+
+function mapV3TemplateListToRows(items: BackendV3TemplateListItem[]): TemplateRow[] {
+  return items.map((item) => {
+    const definition = getInactiveTemplateDefinitionByCode(item.template_code);
+    return {
+      id: item.id,
+      templateCode: item.template_code,
+      backendFamily: "v3",
+      name: definition?.templateName || item.template_code.replace(/_/g, " "),
+      templateCategory: definition?.category || "MOBILE_APP_DORMANT",
+      product: definition?.flowType || "Reminder",
+      eventCategory: definition?.label || item.template_code.replace(/_/g, " "),
+      waveStage: definition?.waveStage || "Wave 1",
+      barrierType: definition?.barrierType || "",
+      notificationFrequencyDays: definition?.notificationFrequencyDays ?? null,
+      channel: "Email",
+      subject: item.subject,
+      headerImage: "",
+      body: item.body_preview,
+      templateFooter: "",
+      footerImage: "",
+      footerTextAbove: "",
+      footerTextBelow: "",
+      videoThumbnail: "",
+      gifThumbnail: "",
+      status: "Active",
+      updated: "From API",
     };
   });
 }
@@ -813,6 +1268,13 @@ const TEMPLATE_CODE_BY_JOB_EVENT: Record<string, Record<string, string>> = {
 };
 
 function resolveTemplateCode(jobKey: string, draft: TemplateDraft, fallbackName: string): string | null {
+  if (isInactiveModule(jobKey)) {
+    const definition = getInactiveTemplateDefinitionByLabel(jobKey, draft.eventCategory);
+    if (definition) {
+      return definition.code;
+    }
+  }
+
   const normalizedEvent = draft.eventCategory.trim().toLowerCase();
   const mapped = TEMPLATE_CODE_BY_JOB_EVENT[jobKey]?.[normalizedEvent];
   if (mapped) {
@@ -840,12 +1302,16 @@ const TEMPLATE_CODES_BY_MODULE: Record<string, Set<string>> = {
     "FINANCIAL_MILESTONE_OFFER",
   ]),
   "existing-migration": new Set(["MIGRATION_UPGRADE", "ACCOUNT_TIER_BALANCE_THRESHOLD", "MATURITY_30_DAY_NOTICE", "MATURITY_DAY_OF_FOLLOW_UP", "CHILD_TURNS_18"]),
-  "inactive-transaction": new Set(["REACTIVATION_PROMPT", "DORMANCY_SAVE"]),
-  "inactive-onebank": new Set(["APP_RETURN", "FEATURE_SPOTLIGHT"]),
+  "inactive-transaction": new Set(INACTIVE_V3_TEMPLATE_DEFINITIONS.filter((item) => item.moduleKey === "inactive-transaction").map((item) => item.code)),
+  "inactive-onebank": new Set(INACTIVE_V3_TEMPLATE_DEFINITIONS.filter((item) => item.moduleKey === "inactive-onebank").map((item) => item.code)),
 };
 
 function inferModuleFromTemplateCode(templateCode?: string): string | null {
   if (!templateCode) return null;
+  const definition = getInactiveTemplateDefinitionByCode(templateCode);
+  if (definition) {
+    return definition.moduleKey;
+  }
   const code = templateCode.trim().toUpperCase();
   const moduleMatch = Object.entries(TEMPLATE_CODES_BY_MODULE).find(([, codes]) => codes.has(code));
   return moduleMatch ? moduleMatch[0] : null;
@@ -882,10 +1348,10 @@ const AUDIT_LOG_ROWS: AuditLogRow[] = [
 ];
 
 const USER_ROWS: UserRow[] = [
-  { name: "Jane Smith", role: "Operations Admin", team: "Operations", status: "Active", lastSeen: "Today 21:11" },
-  { name: "Kunle Ade", role: "Growth Lead", team: "Retail Growth", status: "Active", lastSeen: "Today 20:45" },
-  { name: "Favour Obi", role: "Retention Analyst", team: "Retention", status: "Active", lastSeen: "Today 19:08" },
-  { name: "Tolu Ahmed", role: "Support Reviewer", team: "Support", status: "Suspended", lastSeen: "18 Mar 17:30" },
+  { id: "user-jane-smith", name: "Jane Smith", role: "Operations Admin", team: "Operations", status: "Active", lastSeen: "Today 21:11" },
+  { id: "user-kunle-ade", name: "Kunle Ade", role: "Growth Lead", team: "Retail Growth", status: "Active", lastSeen: "Today 20:45" },
+  { id: "user-favour-obi", name: "Favour Obi", role: "Retention Analyst", team: "Retention", status: "Active", lastSeen: "Today 19:08" },
+  { id: "user-tolu-ahmed", name: "Tolu Ahmed", role: "Support Reviewer", team: "Support", status: "Suspended", lastSeen: "18 Mar 17:30" },
 ];
 
 const EMPTY_OTP_VALUES = ["", "", "", "", "", ""];
@@ -1120,8 +1586,25 @@ export default function Home() {
     "inactive-onebank": null,
   });
   const [viewingTemplate, setViewingTemplate] = useState<TemplateRow | null>(null);
+  const [globalHeaderImage, setGlobalHeaderImage] = useState<string>("");
+  const [globalBannerImage, setGlobalBannerImage] = useState<string>("");
   const [globalSignature, setGlobalSignature] = useState<string>("Warm regards,\nThe Sterling Team");
   const [globalFooter, setGlobalFooter] = useState<string>("Sterling Bank Limited · Sterling Towers, 20 Marina, Lagos · RC 6253");
+  const [inactivityTransactionDays, setInactivityTransactionDays] = useState<string>("90");
+  const [inactivityOnebankDays, setInactivityOnebankDays] = useState<string>("60");
+  const [quietWindowStart, setQuietWindowStart] = useState<string>("22:00");
+  const [quietWindowEnd, setQuietWindowEnd] = useState<string>("06:00");
+  const [escalationAttempts, setEscalationAttempts] = useState<string>("3");
+  const [userRows, setUserRows] = useState<UserRow[]>(USER_ROWS);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [userComposerOpen, setUserComposerOpen] = useState(false);
+  const [openUserActionMenuId, setOpenUserActionMenuId] = useState<string | null>(null);
+  const [userDraft, setUserDraft] = useState<Pick<UserRow, "name" | "role" | "team" | "status">>({
+    name: "",
+    role: "",
+    team: "",
+    status: "Active",
+  });
   const [txCustomerOptions, setTxCustomerOptions] = useState<CustomerOption[]>([]);
   const [txForm, setTxForm] = useState<TxForm>({
     accountNumber: "",
@@ -1133,6 +1616,7 @@ export default function Home() {
   const [txResult, setTxResult] = useState<TxResult | null>(null);
   const [txSeedLoading, setTxSeedLoading] = useState(false);
   const [txSeedResult, setTxSeedResult] = useState<TxSeedResult | null>(null);
+  const [runtimeConfig, setRuntimeConfig] = useState<RuntimeConfigResponse | null>(null);
   const [bulkCampaignRows, setBulkCampaignRows] = useState<BulkCampaignRow[]>([]);
   const [bulkCampaignUploadError, setBulkCampaignUploadError] = useState<string>("");
   const [bulkCampaignUploadNote, setBulkCampaignUploadNote] = useState<string>("");
@@ -1145,8 +1629,44 @@ export default function Home() {
   const [manualTriggerSignal, setManualTriggerSignal] = useState<string>("salary_increase");
   const [manualAmount, setManualAmount] = useState<string>("320000");
   const [manualSubmitting, setManualSubmitting] = useState<boolean>(false);
+  // V3 inactive offer fields
+  const [manualOfferTitle, setManualOfferTitle] = useState<string>("Welcome Back Cashback");
+  const [manualOfferDescription, setManualOfferDescription] = useState<string>("2% cashback on card usage for 30 days");
+  const [manualOfferType, setManualOfferType] = useState<string>("CASHBACK");
+  const [manualOfferValue, setManualOfferValue] = useState<string>("2% cashback");
+  const [manualOfferExpiry, setManualOfferExpiry] = useState<string>(new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10));
+  // V3 mobile barrier fields
+  const [manualLoginFailureCount, setManualLoginFailureCount] = useState<string>("3");
+  const [manualLastFailureReason, setManualLastFailureReason] = useState<string>("WRONG_PIN");
+  const [manualDeviceChange, setManualDeviceChange] = useState<boolean>(false);
   const [moduleWavePlans, setModuleWavePlans] = useState<Record<string, ModuleWavePlan>>(MODULE_WAVE_PLAN_DEFAULTS);
   const [migrationTriggerPlan, setMigrationTriggerPlan] = useState<MigrationTriggerPlan>(MIGRATION_TRIGGER_PLAN_DEFAULTS);
+
+  // Template Rules Management
+  const [templateRules, setTemplateRules] = useState<TemplateRule[]>([]);
+  const [ruleConflicts, setRuleConflicts] = useState<any[]>([]);
+  const [auditEntries, setAuditEntries] = useState<SelectionAuditEntry[]>([]);
+  const [selectedRuleCategory, setSelectedRuleCategory] = useState<string>("salary_increase");
+  const [editingRuleId, setEditingRuleId] = useState<number | null>(null);
+  const [ruleDraft, setRuleDraft] = useState<RuleDraft>({
+    template_code: "",
+    category: "salary_increase",
+    priority: 100,
+    is_default: false,
+    active: true,
+    active_from: "",
+    active_to: "",
+    customer_tier: "",
+    account_type: "",
+    recommended_product: "",
+    balance_min: "",
+    balance_max: "",
+    currency: "",
+    channel: "",
+  });
+  const [ruleFormOpen, setRuleFormOpen] = useState(false);
+  const [ruleLoading, setRuleLoading] = useState(false);
+  const [ruleMessage, setRuleMessage] = useState("");
 
   const manualSignalOptionsByModule: Record<string, Array<{ value: string; label: string }>> = {
     "existing-life-updates": LIFE_EVENT_TRIGGER_OPTIONS.map((item) => ({ value: item.value, label: item.label })),
@@ -1157,25 +1677,51 @@ export default function Home() {
       { value: "both", label: "Combined Signals" },
     ],
     "inactive-transaction": [
-      { value: "reactivation", label: "Reactivation" },
+      { value: "tx_start", label: "Start Journey (Wave 1)" },
+      { value: "tx_signal_email_open", label: "Signal: Email Opened" },
+      { value: "tx_signal_app_login", label: "Signal: App Login" },
+      { value: "tx_signal_transaction", label: "Signal: Transaction Complete" },
+      { value: "tx_signal_web_visit", label: "Signal: Web Visit" },
+      { value: "tx_signal_chat", label: "Signal: Chat Initiated" },
+      { value: "tx_signal_opt_out", label: "Signal: Opt-Out" },
+      { value: "tx_offer_create", label: "Create Offer" },
+      { value: "tx_offer_accept", label: "Accept Latest Offer" },
+      { value: "tx_offer_decline", label: "Decline Latest Offer" },
     ],
     "inactive-onebank": [
-      { value: "app_return", label: "App Return" },
+      { value: "mobile_pin_reset", label: "Classify: PIN Reset Barrier" },
+      { value: "mobile_new_device", label: "Classify: New Device Barrier" },
+      { value: "mobile_feature", label: "Classify: Feature Discovery" },
+      { value: "mobile_confirm", label: "Confirm Re-engagement" },
     ],
   };
 
   async function fetchBackendTemplateRows(): Promise<TemplateRow[] | null> {
     try {
-      const response = await fetch(V2_ENDPOINTS.emailTemplates, {
-        headers: { Accept: "application/json" },
-      });
+      const [v2Response, txV3Response, appV3Response] = await Promise.all([
+        fetch(V2_ENDPOINTS.emailTemplates, { headers: { Accept: "application/json" } }),
+        fetch(V3_ENDPOINTS.templates("INACTIVE_TRANSACTIONAL"), { headers: { Accept: "application/json" } }),
+        fetch(V3_ENDPOINTS.templates("MOBILE_APP_DORMANT"), { headers: { Accept: "application/json" } }),
+      ]);
 
-      if (!response.ok) {
-        return null;
+      const rows: TemplateRow[] = [];
+
+      if (v2Response.ok) {
+        const payload = (await v2Response.json()) as { templates?: BackendTemplateListItem[] };
+        rows.push(...mapBackendTemplatesToRows(Array.isArray(payload.templates) ? payload.templates : []));
       }
 
-      const payload = (await response.json()) as { templates?: BackendTemplateListItem[] };
-      return mapBackendTemplatesToRows(Array.isArray(payload.templates) ? payload.templates : []);
+      if (txV3Response.ok) {
+        const payload = (await txV3Response.json()) as BackendV3TemplateListItem[];
+        rows.push(...mapV3TemplateListToRows(Array.isArray(payload) ? payload : []));
+      }
+
+      if (appV3Response.ok) {
+        const payload = (await appV3Response.json()) as BackendV3TemplateListItem[];
+        rows.push(...mapV3TemplateListToRows(Array.isArray(payload) ? payload : []));
+      }
+
+      return rows.length ? rows : null;
     } catch {
       return null;
     }
@@ -1206,12 +1752,12 @@ export default function Home() {
           return existing
             ? {
                 ...row,
-                headerImage: existing.headerImage,
-                footerImage: existing.footerImage,
-                footerTextAbove: existing.footerTextAbove,
-                footerTextBelow: existing.footerTextBelow,
-                videoThumbnail: existing.videoThumbnail,
-                gifThumbnail: existing.gifThumbnail,
+                headerImage: preferFilledValue(row.headerImage, existing.headerImage),
+                footerImage: preferFilledValue(row.footerImage, existing.footerImage),
+                footerTextAbove: preferFilledValue(row.footerTextAbove, existing.footerTextAbove),
+                footerTextBelow: preferFilledValue(row.footerTextBelow, existing.footerTextBelow),
+                videoThumbnail: preferFilledValue(row.videoThumbnail, existing.videoThumbnail),
+                gifThumbnail: preferFilledValue(row.gifThumbnail, existing.gifThumbnail),
               }
             : row;
         });
@@ -1283,6 +1829,86 @@ export default function Home() {
       }
     } catch {
       // Backend unavailable — customer dropdown stays empty
+    }
+  }
+
+  async function loadRuntimeConfig(): Promise<void> {
+    try {
+      const res = await fetch(V2_ENDPOINTS.runtimeConfig, {
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) {
+        return;
+      }
+      const data = (await res.json()) as RuntimeConfigResponse;
+      setRuntimeConfig(data);
+    } catch {
+      // Backend unavailable — settings page falls back to static content.
+    }
+  }
+
+  function applySettingsPayload(payload: Partial<UiSettingsPayload>): void {
+    setGlobalHeaderImage(payload.globalHeaderImage ?? "");
+    setGlobalBannerImage(payload.globalBannerImage ?? "");
+    setGlobalSignature(payload.globalSignature ?? "Warm regards,\nThe Sterling Team");
+    setGlobalFooter(payload.globalFooter ?? "Sterling Bank Limited - Sterling Towers, 20 Marina, Lagos - RC 6253");
+    setInactivityTransactionDays(payload.inactivityTransactionDays ?? "90");
+    setInactivityOnebankDays(payload.inactivityOnebankDays ?? "60");
+    setQuietWindowStart(payload.quietWindowStart ?? "22:00");
+    setQuietWindowEnd(payload.quietWindowEnd ?? "06:00");
+    setEscalationAttempts(payload.escalationAttempts ?? "3");
+
+    if (Array.isArray(payload.users) && payload.users.length > 0) {
+      setUserRows(
+        payload.users.map((user, index) => ({
+          id: user.id || `user-${index + 1}`,
+          name: user.name ?? "",
+          role: user.role ?? "",
+          team: user.team ?? "",
+          status: user.status === "Suspended" || user.status === "Pending" ? user.status : "Active",
+          lastSeen: user.lastSeen ?? "Today",
+        })),
+      );
+    }
+  }
+
+  function buildSettingsPayload(
+    txDays: number,
+    obDays: number,
+    escalation: number,
+  ): UiSettingsPayload {
+    return {
+      globalHeaderImage,
+      globalBannerImage,
+      globalSignature,
+      globalFooter,
+      inactivityTransactionDays: String(txDays),
+      inactivityOnebankDays: String(obDays),
+      quietWindowStart,
+      quietWindowEnd,
+      escalationAttempts: String(escalation),
+      users: userRows,
+    };
+  }
+
+  async function loadSettingsFromBackend(): Promise<void> {
+    const endpoints = [V3_ENDPOINTS.settings, V2_ENDPOINTS.settings];
+    for (const endpoint of endpoints) {
+      try {
+        const response = await fetch(endpoint, { headers: { Accept: "application/json" } });
+        if (!response.ok) {
+          continue;
+        }
+        const data = (await response.json()) as SettingsResponse;
+        if (!data.settings) {
+          continue;
+        }
+        applySettingsPayload(data.settings);
+        window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(data.settings));
+        return;
+      } catch {
+        // Try the next endpoint.
+      }
     }
   }
 
@@ -1391,6 +2017,155 @@ export default function Home() {
     }
   }
 
+  // Template Rules Management Functions
+  async function loadTemplateRules(category: string): Promise<void> {
+    try {
+      const response = await fetch(`${V2_ENDPOINTS.templateRules}?category=${encodeURIComponent(category)}&active_only=true`, {
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) throw new Error("Failed to load rules");
+      const data = (await response.json()) as { rules?: TemplateRule[] };
+      setTemplateRules(Array.isArray(data.rules) ? data.rules : []);
+    } catch {
+      setRuleMessage("Unable to load rules from backend");
+      setTimeout(() => setRuleMessage(""), 3000);
+    }
+  }
+
+  async function loadRuleConflicts(category: string): Promise<void> {
+    try {
+      const response = await fetch(V2_ENDPOINTS.templateRuleConflicts(category), {
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) throw new Error("Failed to load conflicts");
+      const data = (await response.json()) as { conflicts?: any[] };
+      setRuleConflicts(Array.isArray(data.conflicts) ? data.conflicts : []);
+    } catch {
+      setRuleConflicts([]);
+    }
+  }
+
+  async function loadAuditTrail(customerId?: number): Promise<void> {
+    try {
+      const url = V2_ENDPOINTS.templateSelectionAudit(customerId, selectedRuleCategory, 100);
+      const response = await fetch(url, {
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) throw new Error("Failed to load audit");
+      const data = (await response.json()) as { audit?: SelectionAuditEntry[] };
+      setAuditEntries(Array.isArray(data.audit) ? data.audit : []);
+    } catch {
+      setAuditEntries([]);
+    }
+  }
+
+  async function createRule(): Promise<void> {
+    if (!ruleDraft.template_code.trim()) {
+      setRuleMessage("Template code is required");
+      return;
+    }
+
+    setRuleLoading(true);
+    try {
+      const payload: any = {
+        template_code: ruleDraft.template_code.toUpperCase(),
+        category: ruleDraft.category,
+        priority: Number(ruleDraft.priority),
+        is_default: Boolean(ruleDraft.is_default),
+        active: Boolean(ruleDraft.active),
+      };
+
+      if (ruleDraft.active_from) payload.active_from = `${ruleDraft.active_from}T00:00:00`;
+      if (ruleDraft.active_to) payload.active_to = `${ruleDraft.active_to}T23:59:59`;
+      if (ruleDraft.customer_tier) payload.customer_tier = ruleDraft.customer_tier;
+      if (ruleDraft.account_type) payload.account_type = ruleDraft.account_type;
+      if (ruleDraft.recommended_product) payload.recommended_product = ruleDraft.recommended_product;
+      if (ruleDraft.balance_min) payload.balance_min = parseFloat(ruleDraft.balance_min);
+      if (ruleDraft.balance_max) payload.balance_max = parseFloat(ruleDraft.balance_max);
+      if (ruleDraft.currency) payload.currency = ruleDraft.currency.toUpperCase();
+      if (ruleDraft.channel) payload.channel = ruleDraft.channel;
+
+      const url = editingRuleId ? V2_ENDPOINTS.templateRuleById(editingRuleId) : V2_ENDPOINTS.templateRules;
+      const method = editingRuleId ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) throw new Error("Failed to save rule");
+
+      setRuleMessage(editingRuleId ? "Rule updated successfully" : "Rule created successfully");
+      setRuleFormOpen(false);
+      setEditingRuleId(null);
+      setRuleDraft({
+        template_code: "",
+        category: ruleDraft.category,
+        priority: 100,
+        is_default: false,
+        active: true,
+        active_from: "",
+        active_to: "",
+        customer_tier: "",
+        account_type: "",
+        recommended_product: "",
+        balance_min: "",
+        balance_max: "",
+        currency: "",
+        channel: "",
+      });
+      
+      await loadTemplateRules(ruleDraft.category);
+      await loadRuleConflicts(ruleDraft.category);
+    } catch {
+      setRuleMessage("Failed to save rule. Check backend and try again.");
+    } finally {
+      setRuleLoading(false);
+      setTimeout(() => setRuleMessage(""), 3000);
+    }
+  }
+
+  async function deleteRule(ruleId: number): Promise<void> {
+    if (!confirm("Are you sure? This removes the rule from targeting.")) return;
+
+    try {
+      const response = await fetch(V2_ENDPOINTS.templateRuleById(ruleId), {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) throw new Error("Failed to delete");
+      
+      setRuleMessage("Rule deleted successfully");
+      await loadTemplateRules(selectedRuleCategory);
+      await loadRuleConflicts(selectedRuleCategory);
+    } catch {
+      setRuleMessage("Failed to delete rule");
+    }
+    setTimeout(() => setRuleMessage(""), 3000);
+  }
+
+  function editRule(rule: TemplateRule): void {
+    setRuleDraft({
+      template_code: rule.template_code,
+      category: rule.category,
+      priority: rule.priority,
+      is_default: rule.is_default,
+      active: rule.active,
+      active_from: rule.active_from ? rule.active_from.split("T")[0] : "",
+      active_to: rule.active_to ? rule.active_to.split("T")[0] : "",
+      customer_tier: rule.customer_tier || "",
+      account_type: rule.account_type || "",
+      recommended_product: rule.recommended_product || "",
+      balance_min: rule.balance_min ? String(rule.balance_min) : "",
+      balance_max: rule.balance_max ? String(rule.balance_max) : "",
+      currency: rule.currency || "",
+      channel: rule.channel || "",
+    });
+    setEditingRuleId(rule.rule_id);
+    setRuleFormOpen(true);
+  }
+
   useEffect(() => {
     let cancelled = false;
 
@@ -1415,11 +2190,37 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    void loadRuntimeConfig();
+  }, []);
+
+  useEffect(() => {
     if (!ENABLE_MANUAL_TRIGGER_PANEL) {
       return;
     }
     void loadTxCustomers();
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (activePage === "template-rules") {
+      void loadTemplateRules(selectedRuleCategory);
+      void loadRuleConflicts(selectedRuleCategory);
+      void loadAuditTrail();
+    }
+  }, [activePage, selectedRuleCategory]);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<UiSettingsPayload>;
+        applySettingsPayload(parsed);
+      }
+    } catch {
+      // Ignore malformed local settings and keep defaults.
+    }
+
+    void loadSettingsFromBackend();
   }, []);
 
   const visibleJobs = useMemo(() => {
@@ -1562,22 +2363,45 @@ export default function Home() {
     try {
       if (manualModuleKey === "existing-life-updates") {
         const selectedEvent = LIFE_EVENT_TRIGGER_OPTIONS.find((item) => item.value === manualTriggerSignal) ?? LIFE_EVENT_TRIGGER_OPTIONS[0];
-        const response = await fetch(V2_ENDPOINTS.processTransaction, {
+        const isDocumentExpiryEvent =
+          selectedEvent.value === "passport_expiry" || selectedEvent.value === "drivers_license_expiry";
+        const customerId = manualCustomerId ? Number(manualCustomerId) : undefined;
+
+        if (manualCustomerId && (isNaN(Number(manualCustomerId)) || Number(manualCustomerId) <= 0)) {
+          setManualMessage("Customer ID must be a positive number.");
+          window.setTimeout(() => setManualMessage(""), 4000);
+          return;
+        }
+
+        const response = await fetch(isDocumentExpiryEvent ? V2_ENDPOINTS.offersSend : V2_ENDPOINTS.processTransaction, {
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({
-            account_number: manualAccountNumber,
-            narration: selectedEvent.narration,
-            amount: Number(manualAmount || selectedEvent.defaultAmount),
-            transaction_date: manualStartDate,
-          }),
+          body: JSON.stringify(
+            isDocumentExpiryEvent
+              ? {
+                  customer_id: customerId,
+                  account_number: manualAccountNumber || undefined,
+                  recommendation_context: selectedEvent.value,
+                }
+              : {
+                  account_number: manualAccountNumber,
+                  narration: selectedEvent.narration,
+                  amount: Number(manualAmount || selectedEvent.defaultAmount),
+                  transaction_date: manualStartDate,
+                },
+          ),
         });
 
         if (!response.ok) {
-          throw new Error("Failed to trigger life updates workflow");
+          const errText = await response.text();
+          throw new Error(errText || "Failed to trigger life updates workflow");
         }
 
-        setManualMessage(`Life Updates triggered with signal ${selectedEvent.label}.`);
+        setManualMessage(
+          isDocumentExpiryEvent
+            ? `Life Updates triggered for ${selectedEvent.label}.`
+            : `Life Updates triggered with signal ${selectedEvent.label}.`,
+        );
       } else if (manualModuleKey === "existing-migration") {
         const response = await fetch(V2_ENDPOINTS.lifecycleTriggersExecute, {
           method: "POST",
@@ -1597,18 +2421,140 @@ export default function Home() {
         }
 
         setManualMessage("Lifecycle Triggers workflow triggered successfully.");
-      } else {
-        const response = await fetch(V2_ENDPOINTS.workflowJobTrigger(manualModuleKey), {
-          method: "POST",
-          headers: { Accept: "application/json" },
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to trigger workflow job");
+      } else if (manualModuleKey === "inactive-transaction") {
+        const cid = Number(manualCustomerId);
+        if (!manualCustomerId || isNaN(cid) || cid <= 0) {
+          setManualMessage("A valid Customer ID is required for Transaction Inactive flows.");
+          window.setTimeout(() => setManualMessage(""), 4000);
+          return;
         }
 
-        const jobName = manualModuleKey === "inactive-transaction" ? "Transaction Inactive" : "Onebank Inactive";
-        setManualMessage(`${jobName} workflow triggered successfully.`);
+        const TX_SIGNAL_TYPE_MAP: Record<string, string> = {
+          tx_signal_email_open: "EMAIL_OPEN",
+          tx_signal_app_login: "APP_LOGIN",
+          tx_signal_transaction: "TRANSACTION_COMPLETE",
+          tx_signal_web_visit: "WEB_VISIT",
+          tx_signal_chat: "CHAT_INITIATED",
+          tx_signal_opt_out: "OPT_OUT",
+        };
+
+        let txUrl = "";
+        let txBody: Record<string, unknown> = { customer_id: cid };
+
+        if (manualTriggerSignal === "tx_start") {
+          txUrl = V3_ENDPOINTS.txInactiveStart;
+        } else if (manualTriggerSignal in TX_SIGNAL_TYPE_MAP) {
+          txUrl = V3_ENDPOINTS.txInactiveSignal;
+          txBody = { customer_id: cid, signal_type: TX_SIGNAL_TYPE_MAP[manualTriggerSignal] };
+        } else if (manualTriggerSignal === "tx_offer_create") {
+          if (!manualOfferTitle || !manualOfferDescription || !manualOfferType || !manualOfferExpiry) {
+            setManualMessage("Offer title, description, type, and expiry are required to create an offer.");
+            window.setTimeout(() => setManualMessage(""), 4000);
+            return;
+          }
+          txUrl = V3_ENDPOINTS.txInactiveOffer;
+          txBody = {
+            customer_id: cid,
+            offer_title: manualOfferTitle,
+            offer_description: manualOfferDescription,
+            offer_type: manualOfferType,
+            offer_value: manualOfferValue || undefined,
+            expires_at: manualOfferExpiry,
+          };
+        } else if (manualTriggerSignal === "tx_offer_accept") {
+          txUrl = V3_ENDPOINTS.txInactiveOfferAccept;
+        } else if (manualTriggerSignal === "tx_offer_decline") {
+          txUrl = V3_ENDPOINTS.txInactiveOfferDecline;
+        } else {
+          setManualMessage("Select a valid Transaction Inactive action.");
+          window.setTimeout(() => setManualMessage(""), 4000);
+          return;
+        }
+
+        const txResponse = await fetch(txUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify(txBody),
+        });
+
+        if (!txResponse.ok) {
+          const errText = await txResponse.text();
+          throw new Error(`Transaction Inactive action failed: ${errText}`);
+        }
+
+        const txResult = (await txResponse.json()) as Record<string, unknown>;
+        const txDetail =
+          typeof txResult.message === "string"
+            ? txResult.message
+            : typeof txResult.status === "string"
+              ? `Status: ${txResult.status}`
+              : typeof txResult.wave_number === "number"
+                ? `Wave ${txResult.wave_number} sent`
+                : "Action completed";
+        setManualMessage(`Transaction Inactive: ${txDetail}`);
+      } else if (manualModuleKey === "inactive-onebank") {
+        const cid = Number(manualCustomerId);
+        if (!manualCustomerId || isNaN(cid) || cid <= 0) {
+          setManualMessage("A valid Customer ID is required for Onebank Inactive flows.");
+          window.setTimeout(() => setManualMessage(""), 4000);
+          return;
+        }
+
+        if (manualTriggerSignal === "mobile_confirm") {
+          const confirmResponse = await fetch(V3_ENDPOINTS.mobileConfirmReengagement, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ customer_id: cid }),
+          });
+
+          if (!confirmResponse.ok) {
+            const errText = await confirmResponse.text();
+            throw new Error(`Confirm re-engagement failed: ${errText}`);
+          }
+
+          const confirmResult = (await confirmResponse.json()) as Record<string, unknown>;
+          const confirmStatus = typeof confirmResult.status === "string" ? confirmResult.status : "done";
+          const confirmNote = typeof confirmResult.reason === "string" ? ` - ${confirmResult.reason}` : "";
+          setManualMessage(`Re-engagement confirmed: ${confirmStatus}${confirmNote}`);
+        } else {
+          const MOBILE_BARRIER_BODY_MAP: Record<string, Record<string, unknown>> = {
+            mobile_pin_reset: {
+              customer_id: cid,
+              login_failure_count: Number(manualLoginFailureCount) || 3,
+              last_failure_reason: manualLastFailureReason || "WRONG_PIN",
+              device_change_detected: false,
+            },
+            mobile_new_device: {
+              customer_id: cid,
+              login_failure_count: 0,
+              device_change_detected: manualDeviceChange,
+              new_device_id: "device-test-001",
+            },
+            mobile_feature: {
+              customer_id: cid,
+              login_failure_count: 0,
+              device_change_detected: false,
+              feature_usage_profile: { savings_goal: false, standing_order: false },
+            },
+          };
+
+          const mobileBody = MOBILE_BARRIER_BODY_MAP[manualTriggerSignal] ?? { customer_id: cid };
+          const mobileResponse = await fetch(V3_ENDPOINTS.mobileClassify, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify(mobileBody),
+          });
+
+          if (!mobileResponse.ok) {
+            const errText = await mobileResponse.text();
+            throw new Error(`Mobile barrier classify failed: ${errText}`);
+          }
+
+          const mobileResult = (await mobileResponse.json()) as Record<string, unknown>;
+          const barrierType = typeof mobileResult.barrier_type === "string" ? mobileResult.barrier_type : "classified";
+          const emailSent = mobileResult.email_sent === true ? ", email sent" : "";
+          setManualMessage(`App Inactive classified: ${barrierType}${emailSent}`);
+        }
       }
     } catch {
       setManualMessage("Trigger failed. Please confirm required values and backend availability.");
@@ -1846,6 +2792,22 @@ export default function Home() {
     }
   }
 
+  function renderCustomerToggle() {
+    return (
+      <div className="cc-customer-toggle" aria-label="Customer scope filter">
+        <button className={customerScope === "all" ? "active" : ""} onClick={() => applyCustomerScope("all")}>
+          All Customers
+        </button>
+        <button className={customerScope === "existing" ? "active" : ""} onClick={() => applyCustomerScope("existing")}>
+          Existing
+        </button>
+        <button className={customerScope === "inactive" ? "active" : ""} onClick={() => applyCustomerScope("inactive")}>
+          Inactive
+        </button>
+      </div>
+    );
+  }
+
   function downloadCsv(fileName: string, headers: string[], rows: string[][]) {
     const escapeCsv = (value: string) => `"${String(value).replace(/"/g, '""')}"`;
     const csv = [headers.join(","), ...rows.map((row) => row.map(escapeCsv).join(","))].join("\n");
@@ -1868,14 +2830,177 @@ export default function Home() {
     );
   }
 
+  function buildV3TemplateRow(detail: BackendV3TemplateDetail, fallbackName?: string): TemplateRow {
+    const definition = getInactiveTemplateDefinitionByCode(detail.template_code);
+    return {
+      id: detail.id,
+      templateCode: detail.template_code,
+      backendFamily: "v3",
+      name: fallbackName || definition?.templateName || detail.template_code.replace(/_/g, " "),
+      templateCategory: detail.category,
+      product: definition?.flowType || "Reminder",
+      eventCategory: definition?.label || detail.template_code.replace(/_/g, " "),
+      waveStage: definition?.waveStage || "Wave 1",
+      barrierType: detail.barrier_type || definition?.barrierType || "",
+      notificationFrequencyDays: detail.notification_frequency_days ?? definition?.notificationFrequencyDays ?? null,
+      channel: "Email",
+      subject: detail.subject,
+      header: "",
+      headerImage: detail.header_image ?? "",
+      body: detail.body_html,
+      templateFooter: detail.template_footer ?? "",
+      footerImage: detail.footer_image ?? "",
+      footerTextAbove: detail.footer_text_above ?? "",
+      footerTextBelow: detail.footer_text_below ?? "",
+      videoThumbnail: detail.video_thumbnail ?? "",
+      gifThumbnail: detail.gif_thumbnail ?? "",
+      status: "Active",
+      updated: "From API",
+    };
+  }
+
+  function buildV3TemplatePayload(jobKey: string, draft: TemplateDraft, existingTemplateCode?: string) {
+    const definition =
+      getInactiveTemplateDefinitionByLabel(jobKey, draft.eventCategory) ||
+      getInactiveTemplateDefinitionByCode(existingTemplateCode || "") ||
+      getInactiveTemplateDefinitionByCode(draft.eventCategory || "");
+    if (!definition) {
+      return null;
+    }
+
+    const parsedFrequency = Number.parseInt(draft.notificationFrequencyDays, 10);
+    const frequency = Number.isFinite(parsedFrequency)
+      ? parsedFrequency
+      : definition.notificationFrequencyDays ?? moduleWavePlans[jobKey]?.spacingDays ?? null;
+
+    return {
+      templateCode: definition.code,
+      createPayload: {
+        template_code: definition.code,
+        category: definition.category,
+        wave_number: definition.code.startsWith("INACTIVE_WAVE_") && definition.code !== "INACTIVE_WAVE_WELCOME_BACK"
+          ? Number.parseInt(definition.code.replace("INACTIVE_WAVE_", ""), 10)
+          : null,
+        barrier_type: definition.barrierType ?? null,
+        notification_frequency_days: frequency,
+        subject: draft.subject,
+        body_html: draft.body,
+        body_text: stripHtmlTags(draft.body),
+        header_image: draft.headerImage,
+        template_footer: draft.templateFooter,
+        footer_image: draft.footerImage,
+        footer_text_above: draft.footerTextAbove,
+        footer_text_below: draft.footerTextBelow,
+        video_thumbnail: draft.videoThumbnail,
+        gif_thumbnail: draft.gifThumbnail,
+      },
+      updatePayload: {
+        subject: draft.subject,
+        body_html: draft.body,
+        body_text: stripHtmlTags(draft.body),
+        notification_frequency_days: frequency,
+        header_image: draft.headerImage,
+        template_footer: draft.templateFooter,
+        footer_image: draft.footerImage,
+        footer_text_above: draft.footerTextAbove,
+        footer_text_below: draft.footerTextBelow,
+        video_thumbnail: draft.videoThumbnail,
+        gif_thumbnail: draft.gifThumbnail,
+      },
+    };
+  }
+
   async function createTemplate(jobKey: string) {
     const draft = templateDrafts[jobKey];
     const editingId = editingTemplateByJob[jobKey];
 
-    if (!draft?.name.trim() || !draft.product.trim() || !draft.eventCategory.trim() || !draft.subject.trim() || !draft.body.trim()) {
-      setManualMessage("Template name, product, event category, subject, and body are required.");
+    const requiresV3 = isInactiveModule(jobKey);
+    const hasRequiredFields = requiresV3
+      ? Boolean(draft?.eventCategory.trim() && draft?.subject.trim() && draft?.body.trim())
+      : Boolean(draft?.name.trim() && draft?.product.trim() && draft?.eventCategory.trim() && draft?.subject.trim() && draft?.body.trim());
+
+    if (!hasRequiredFields) {
+      setManualMessage(requiresV3 ? "Flow template, subject, and body are required." : "Template name, product, event category, subject, and body are required.");
       window.setTimeout(() => setManualMessage(""), 3500);
       return;
+    }
+
+    if (requiresV3) {
+      const currentTemplate = (templatesByJob[jobKey] ?? []).find((item) => item.id === editingId);
+      const built = buildV3TemplatePayload(jobKey, draft, currentTemplate?.templateCode);
+      if (!built) {
+        setManualMessage("Selected inactive flow is not wired to a backend V3 template yet.");
+        window.setTimeout(() => setManualMessage(""), 3500);
+        return;
+      }
+
+      try {
+        let response = editingId
+          ? await fetch(V3_ENDPOINTS.templateByCode(built.templateCode), {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+              },
+              body: JSON.stringify(built.updatePayload),
+            })
+          : await fetch(V3_ENDPOINTS.templates(), {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+              },
+              body: JSON.stringify(built.createPayload),
+            });
+
+        if (!editingId && response.status === 409) {
+          response = await fetch(V3_ENDPOINTS.templateByCode(built.templateCode), {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify(built.updatePayload),
+          });
+        }
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || "Failed to save V3 template");
+        }
+
+        const detail = (await response.json()) as BackendV3TemplateDetail;
+        const savedRow = buildV3TemplateRow(detail, draft.name);
+
+        setTemplatesByJob((prev) => ({
+          ...prev,
+          [jobKey]: editingId
+            ? (prev[jobKey] ?? []).map((item) => (item.id === editingId || item.templateCode === savedRow.templateCode ? savedRow : item))
+            : [savedRow, ...(prev[jobKey] ?? []).filter((item) => item.templateCode !== savedRow.templateCode)],
+        }));
+
+        if (viewingTemplate?.id === editingId || viewingTemplate?.templateCode === savedRow.templateCode) {
+          setViewingTemplate(savedRow);
+        }
+
+        setEditingTemplateByJob((prev) => ({ ...prev, [jobKey]: null }));
+        setTemplateComposerOpenByJob((prev) => ({ ...prev, [jobKey]: false }));
+        setTemplateDrafts((prev) => ({ ...prev, [jobKey]: INITIAL_TEMPLATE_DRAFTS[jobKey] }));
+
+        const refreshed = await fetchBackendTemplateRows();
+        if (refreshed) {
+          applyBackendTemplatesByModule(refreshed);
+        }
+
+        setManualMessage(editingId ? "V3 template updated successfully." : "V3 template saved successfully.");
+        window.setTimeout(() => setManualMessage(""), 3500);
+        return;
+      } catch (error) {
+        const message = error instanceof Error && error.message ? error.message : "Unable to save inactive template to the V3 backend right now. Please try again.";
+        setManualMessage(message);
+        window.setTimeout(() => setManualMessage(""), 3500);
+        return;
+      }
     }
 
     if (editingId) {
@@ -1928,6 +3053,9 @@ export default function Home() {
                 templateCategory: draft.templateCategory,
                 product: draft.product,
                 eventCategory: draft.eventCategory,
+                waveStage: draft.waveStage,
+                barrierType: draft.barrierType,
+                notificationFrequencyDays: draft.notificationFrequencyDays ? Number(draft.notificationFrequencyDays) : null,
                 channel: draft.channel,
                 subject: draft.subject,
                 header: draft.header,
@@ -1953,6 +3081,8 @@ export default function Home() {
                 product: draft.product,
                 eventCategory: draft.eventCategory,
                 waveStage: draft.waveStage,
+                barrierType: draft.barrierType,
+                notificationFrequencyDays: draft.notificationFrequencyDays ? Number(draft.notificationFrequencyDays) : null,
                 channel: draft.channel,
                 subject: draft.subject,
                 header: draft.header,
@@ -1985,11 +3115,6 @@ export default function Home() {
     const templateCode = resolveTemplateCode(jobKey, draft, draft.name);
     if (!templateCode) {
       setManualMessage("Selected event category is not wired to a backend trigger code yet. Choose a supported event category.");
-      window.setTimeout(() => setManualMessage(""), 3500);
-      return;
-    }
-    if (!templateCode) {
-      setManualMessage("Template name is required.");
       window.setTimeout(() => setManualMessage(""), 3500);
       return;
     }
@@ -2037,11 +3162,14 @@ export default function Home() {
         {
           id: createdTemplateId,
           templateCode,
+          backendFamily: "v2",
           name: draft.name,
           templateCategory: draft.templateCategory,
           product: draft.product,
           eventCategory: draft.eventCategory,
           waveStage: draft.waveStage,
+          barrierType: draft.barrierType,
+          notificationFrequencyDays: draft.notificationFrequencyDays ? Number(draft.notificationFrequencyDays) : null,
           channel: draft.channel,
           subject: draft.subject,
           header: draft.header,
@@ -2085,6 +3213,20 @@ export default function Home() {
     }
 
     try {
+      if (template.backendFamily === "v3" || inferModuleFromTemplateCode(template.templateCode)?.startsWith("inactive-")) {
+        const response = await fetch(V3_ENDPOINTS.templateByCode(template.templateCode), {
+          headers: { Accept: "application/json" },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch V3 template detail");
+        }
+
+        const detail = (await response.json()) as BackendV3TemplateDetail;
+        setViewingTemplate(buildV3TemplateRow(detail, template.name));
+        return;
+      }
+
       const response = await fetch(V2_ENDPOINTS.emailTemplateByCode(template.templateCode), {
         headers: { Accept: "application/json" },
       });
@@ -2101,13 +3243,13 @@ export default function Home() {
         name: detail.template_code.replace(/_/g, " "),
         subject: detail.subject_template,
         body: detail.body_template,
-        headerImage: detail.header_image ?? template.headerImage,
-        templateFooter: detail.template_footer ?? template.templateFooter,
-        footerImage: detail.footer_image ?? template.footerImage,
-        footerTextAbove: detail.footer_text_above ?? template.footerTextAbove,
-        footerTextBelow: detail.footer_text_below ?? template.footerTextBelow,
-        videoThumbnail: detail.video_thumbnail ?? template.videoThumbnail,
-        gifThumbnail: detail.gif_thumbnail ?? template.gifThumbnail,
+        headerImage: preferFilledValue(detail.header_image, template.headerImage),
+        templateFooter: preferFilledValue(detail.template_footer, template.templateFooter),
+        footerImage: preferFilledValue(detail.footer_image, template.footerImage),
+        footerTextAbove: preferFilledValue(detail.footer_text_above, template.footerTextAbove),
+        footerTextBelow: preferFilledValue(detail.footer_text_below, template.footerTextBelow),
+        videoThumbnail: preferFilledValue(detail.video_thumbnail, template.videoThumbnail),
+        gifThumbnail: preferFilledValue(detail.gif_thumbnail, template.gifThumbnail),
       });
     } catch {
       setViewingTemplate(template);
@@ -2127,7 +3269,7 @@ export default function Home() {
     setOpenTemplateActionMenuByJob((prev) => ({ ...prev, [jobKey]: null }));
 
     if (action === "edit") {
-      editTemplate(jobKey, template.id);
+      void editTemplate(jobKey, template.id);
       return;
     }
 
@@ -2136,17 +3278,23 @@ export default function Home() {
       return;
     }
 
-    deleteTemplate(jobKey, template.id);
+    void deleteTemplate(jobKey, template.id);
   }
 
   function updateTemplateDraft(jobKey: string, field: keyof TemplateDraft, value: string) {
-    setTemplateDrafts((prev) => ({
-      ...prev,
-      [jobKey]: {
+    setTemplateDrafts((prev) => {
+      const current = {
         ...(prev[jobKey] ?? INITIAL_TEMPLATE_DRAFTS[jobKey]),
         [field]: value,
-      },
-    }));
+      } as TemplateDraft;
+
+      return {
+        ...prev,
+        [jobKey]: field === "eventCategory" && isInactiveModule(jobKey)
+          ? applyInactiveTemplateSelection(jobKey, value, current)
+          : current,
+      };
+    });
   }
 
   async function handleTemplateImageUpload(jobKey: string, field: keyof TemplateDraft, fileList: FileList | null) {
@@ -2161,10 +3309,198 @@ export default function Home() {
     try {
       const dataUrl = await readFileAsDataUrl(file);
       updateTemplateDraft(jobKey, field, dataUrl);
+      setManualMessage(`${field === "headerImage" ? "Header" : field === "footerImage" ? "Footer" : "Template"} image loaded.`);
+      window.setTimeout(() => setManualMessage(""), 2200);
     } catch {
       setManualMessage("Unable to read image file. Please try another image.");
       window.setTimeout(() => setManualMessage(""), 3500);
     }
+  }
+
+  async function handleGlobalBannerUpload(fileList: FileList | null) {
+    const file = fileList?.[0];
+    if (!file) return;
+    const allowedTypes = ["image/png", "image/jpeg"];
+    if (!allowedTypes.includes(file.type)) {
+      setManualMessage("Only PNG or JPG images are supported for the global banner.");
+      window.setTimeout(() => setManualMessage(""), 3500);
+      return;
+    }
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setGlobalBannerImage(dataUrl);
+      setManualMessage("Global banner updated.");
+      window.setTimeout(() => setManualMessage(""), 2200);
+    } catch {
+      setManualMessage("Unable to read banner image. Please try another file.");
+      window.setTimeout(() => setManualMessage(""), 3500);
+    }
+  }
+
+  async function handleGlobalHeaderUpload(fileList: FileList | null) {
+    const file = fileList?.[0];
+    if (!file) return;
+    const allowedTypes = ["image/png", "image/jpeg"];
+    if (!allowedTypes.includes(file.type)) {
+      setManualMessage("Only PNG or JPG images are supported for the global header.");
+      window.setTimeout(() => setManualMessage(""), 3500);
+      return;
+    }
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setGlobalHeaderImage(dataUrl);
+      setManualMessage("Global header image updated.");
+      window.setTimeout(() => setManualMessage(""), 2200);
+    } catch {
+      setManualMessage("Unable to read header image. Please try another file.");
+      window.setTimeout(() => setManualMessage(""), 3500);
+    }
+  }
+
+  async function saveSettings() {
+    const txDays = Number(inactivityTransactionDays);
+    const obDays = Number(inactivityOnebankDays);
+    const escalation = Number(escalationAttempts);
+
+    if (!Number.isFinite(txDays) || txDays <= 0 || !Number.isFinite(obDays) || obDays <= 0 || !Number.isFinite(escalation) || escalation <= 0) {
+      setManualMessage("Settings not saved. Thresholds and escalation must be positive numbers.");
+      window.setTimeout(() => setManualMessage(""), 3500);
+      return;
+    }
+
+    const payload = buildSettingsPayload(txDays, obDays, escalation);
+
+    try {
+      window.localStorage.setItem(
+        SETTINGS_STORAGE_KEY,
+        JSON.stringify(payload),
+      );
+    } catch {
+      setManualMessage("Unable to save settings in this browser session.");
+      window.setTimeout(() => setManualMessage(""), 3500);
+      return;
+    }
+
+    const requests = await Promise.allSettled([
+      fetch(V2_ENDPOINTS.settings, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+      }),
+      fetch(V3_ENDPOINTS.settings, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+      }),
+    ]);
+
+    const v2Ok = requests[0].status === "fulfilled" && requests[0].value.ok;
+    const v3Ok = requests[1].status === "fulfilled" && requests[1].value.ok;
+
+    if (v2Ok && v3Ok) {
+      setManualMessage("Settings saved to V2 and V3 successfully.");
+    } else if (v2Ok || v3Ok) {
+      setManualMessage("Settings saved partially (one backend unavailable). Local save completed.");
+    } else {
+      setManualMessage("Settings saved locally, but backend sync failed for both V2 and V3.");
+    }
+    window.setTimeout(() => setManualMessage(""), 3500);
+  }
+
+  function startUserEdit(user: UserRow) {
+    setEditingUserId(user.id);
+    setUserComposerOpen(true);
+    setOpenUserActionMenuId(null);
+    setUserDraft({
+      name: user.name,
+      role: user.role,
+      team: user.team,
+      status: user.status,
+    });
+  }
+
+  function clearUserDraft() {
+    setEditingUserId(null);
+    setUserComposerOpen(false);
+    setOpenUserActionMenuId(null);
+    setUserDraft({ name: "", role: "", team: "", status: "Active" });
+  }
+
+  function startNewUserDraft() {
+    setEditingUserId(null);
+    setUserComposerOpen(true);
+    setOpenUserActionMenuId(null);
+    setUserDraft({ name: "", role: "", team: "", status: "Active" });
+  }
+
+  function saveUserDraft() {
+    const trimmedName = userDraft.name.trim();
+    const trimmedRole = userDraft.role.trim();
+    const trimmedTeam = userDraft.team.trim();
+    if (!trimmedName || !trimmedRole || !trimmedTeam) {
+      setManualMessage("User name, role, and team are required.");
+      window.setTimeout(() => setManualMessage(""), 3000);
+      return;
+    }
+
+    const nowLabel = "Just now";
+    if (editingUserId) {
+      setUserRows((prev) =>
+        prev.map((user) =>
+          user.id === editingUserId
+            ? {
+                ...user,
+                name: trimmedName,
+                role: trimmedRole,
+                team: trimmedTeam,
+                status: userDraft.status,
+                lastSeen: nowLabel,
+              }
+            : user,
+        ),
+      );
+      setManualMessage("User updated. Click Save Settings to persist.");
+    } else {
+      const newUser: UserRow = {
+        id: `user-${Date.now()}`,
+        name: trimmedName,
+        role: trimmedRole,
+        team: trimmedTeam,
+        status: userDraft.status,
+        lastSeen: nowLabel,
+      };
+      setUserRows((prev) => [newUser, ...prev]);
+      setManualMessage("User added. Click Save Settings to persist.");
+    }
+    window.setTimeout(() => setManualMessage(""), 3000);
+    clearUserDraft();
+  }
+
+  function deleteUser(userId: string) {
+    setUserRows((prev) => prev.filter((user) => user.id !== userId));
+    setOpenUserActionMenuId(null);
+    if (editingUserId === userId) {
+      clearUserDraft();
+    }
+    setManualMessage("User deleted. Click Save Settings to persist.");
+    window.setTimeout(() => setManualMessage(""), 3000);
+  }
+
+  function toggleUserActive(userId: string) {
+    setUserRows((prev) =>
+      prev.map((user) =>
+        user.id === userId
+          ? {
+              ...user,
+              status: user.status === "Active" ? "Suspended" : "Active",
+              lastSeen: "Just now",
+            }
+          : user,
+      ),
+    );
+    setOpenUserActionMenuId(null);
+    setManualMessage("User status updated. Click Save Settings to persist.");
+    window.setTimeout(() => setManualMessage(""), 3000);
   }
 
   function updateModuleWavePlan(jobKey: string, field: keyof ModuleWavePlan, value: string | number) {
@@ -2187,35 +3523,53 @@ export default function Home() {
     }) as MigrationTriggerPlan);
   }
 
-  function editTemplate(jobKey: string, templateId: string) {
+  async function editTemplate(jobKey: string, templateId: string) {
     const current = (templatesByJob[jobKey] ?? []).find((item) => item.id === templateId);
     if (!current) {
       return;
     }
+
+    let source = current;
+    if (current.templateCode && current.backendFamily === "v3") {
+      try {
+        const response = await fetch(V3_ENDPOINTS.templateByCode(current.templateCode), {
+          headers: { Accept: "application/json" },
+        });
+        if (response.ok) {
+          const detail = (await response.json()) as BackendV3TemplateDetail;
+          source = buildV3TemplateRow(detail, current.name);
+        }
+      } catch {
+        // Fall back to cached row.
+      }
+    }
+
     setTemplateDrafts((prev) => ({
       ...prev,
       [jobKey]: {
-        name: current.name,
-        templateCategory: current.templateCategory,
-        product: current.product,
-        eventCategory: current.eventCategory,
-        waveStage: current.waveStage,
-        channel: current.channel,
-        subject: current.subject,
-        header: current.header ?? "",
-        headerImage: current.headerImage ?? "",
-        body: current.body,
-        templateFooter: current.templateFooter ?? "",
-        footerImage: current.footerImage ?? "",
-        footerTextAbove: current.footerTextAbove ?? "",
-        footerTextBelow: current.footerTextBelow ?? "",
-        videoThumbnail: current.videoThumbnail ?? "",
-        gifThumbnail: current.gifThumbnail ?? "",
+        name: source.name,
+        templateCategory: source.templateCategory,
+        product: source.product,
+        eventCategory: source.eventCategory,
+        waveStage: source.waveStage,
+        barrierType: source.barrierType ?? "",
+        notificationFrequencyDays: source.notificationFrequencyDays == null ? "" : String(source.notificationFrequencyDays),
+        channel: source.channel,
+        subject: source.subject,
+        header: source.header ?? "",
+        headerImage: source.headerImage ?? "",
+        body: source.body,
+        templateFooter: source.templateFooter ?? "",
+        footerImage: source.footerImage ?? "",
+        footerTextAbove: source.footerTextAbove ?? "",
+        footerTextBelow: source.footerTextBelow ?? "",
+        videoThumbnail: source.videoThumbnail ?? "",
+        gifThumbnail: source.gifThumbnail ?? "",
       },
     }));
     setEditingTemplateByJob((prev) => ({ ...prev, [jobKey]: templateId }));
     setTemplateComposerOpenByJob((prev) => ({ ...prev, [jobKey]: true }));
-    setManualMessage(`Editing ${current.name}. Update fields and click Save Template.`);
+    setManualMessage(`Editing ${source.name}. Update fields and click Save Template.`);
     window.setTimeout(() => setManualMessage(""), 3000);
   }
 
@@ -2234,7 +3588,10 @@ export default function Home() {
 
     if (current.templateCode) {
       try {
-        const response = await fetch(V2_ENDPOINTS.emailTemplateByCode(current.templateCode), {
+        const endpoint = current.backendFamily === "v3"
+          ? V3_ENDPOINTS.templateByCode(current.templateCode)
+          : V2_ENDPOINTS.emailTemplateByCode(current.templateCode);
+        const response = await fetch(endpoint, {
           method: "DELETE",
           headers: { Accept: "application/json" },
         });
@@ -2270,22 +3627,6 @@ export default function Home() {
     setOpenTemplateActionMenuByJob((prev) => ({ ...prev, [jobKey]: null }));
     setManualMessage("Template deleted successfully.");
     window.setTimeout(() => setManualMessage(""), 2500);
-  }
-
-  function renderCustomerToggle() {
-    return (
-      <div className="cc-customer-toggle" role="tablist" aria-label="Customer category toggle">
-        <button className={customerScope === "all" ? "active" : ""} onClick={() => applyCustomerScope("all")}>
-          All
-        </button>
-        <button className={customerScope === "existing" ? "active" : ""} onClick={() => applyCustomerScope("existing")}>
-          Existing
-        </button>
-        <button className={customerScope === "inactive" ? "active" : ""} onClick={() => applyCustomerScope("inactive")}>
-          Inactive
-        </button>
-      </div>
-    );
   }
 
   function renderDashboard() {
@@ -2509,10 +3850,13 @@ export default function Home() {
               <h3>Manual Trigger Panel</h3>
               <span>audit logged</span>
             </div>
+            <p className="cc-inline-feedback" style={{ marginBottom: "10px" }}>
+              For V3 inactive flows, use a numeric Customer ID and choose a V3 action from Trigger Signal.
+            </p>
             <div className="cc-form-grid">
               <label>
                 Customer ID
-                <input value={manualCustomerId} onChange={(event) => setManualCustomerId(event.target.value)} placeholder="CUS-XXXXX" />
+                <input value={manualCustomerId} onChange={(event) => setManualCustomerId(event.target.value)} placeholder="e.g. 50" />
               </label>
               <label>
                 Account Number
@@ -2571,6 +3915,61 @@ export default function Home() {
                     onChange={(event) => setManualAmount(event.target.value)}
                     placeholder="320000"
                   />
+                </label>
+              ) : null}
+              {manualModuleKey === "inactive-transaction" && manualTriggerSignal === "tx_offer_create" ? (
+                <>
+                  <label>
+                    Offer Title
+                    <input value={manualOfferTitle} onChange={(event) => setManualOfferTitle(event.target.value)} placeholder="Welcome Back Cashback" />
+                  </label>
+                  <label>
+                    Offer Type
+                    <input value={manualOfferType} onChange={(event) => setManualOfferType(event.target.value)} placeholder="CASHBACK" />
+                  </label>
+                  <label>
+                    Offer Value
+                    <input value={manualOfferValue} onChange={(event) => setManualOfferValue(event.target.value)} placeholder="2% cashback" />
+                  </label>
+                  <label>
+                    Offer Expiry
+                    <input type="date" value={manualOfferExpiry} onChange={(event) => setManualOfferExpiry(event.target.value)} />
+                  </label>
+                  <label style={{ gridColumn: "1 / -1" }}>
+                    Offer Description
+                    <input
+                      value={manualOfferDescription}
+                      onChange={(event) => setManualOfferDescription(event.target.value)}
+                      placeholder="2% cashback on card usage for 30 days"
+                    />
+                  </label>
+                </>
+              ) : null}
+              {manualModuleKey === "inactive-onebank" && manualTriggerSignal === "mobile_pin_reset" ? (
+                <>
+                  <label>
+                    Login Failure Count
+                    <input
+                      type="number"
+                      min="0"
+                      value={manualLoginFailureCount}
+                      onChange={(event) => setManualLoginFailureCount(event.target.value)}
+                      placeholder="3"
+                    />
+                  </label>
+                  <label>
+                    Last Failure Reason
+                    <input value={manualLastFailureReason} onChange={(event) => setManualLastFailureReason(event.target.value)} placeholder="WRONG_PIN" />
+                  </label>
+                </>
+              ) : null}
+              {manualModuleKey === "inactive-onebank" && manualTriggerSignal === "mobile_new_device" ? (
+                <label>
+                  Device Change Detected
+                  <select value={manualDeviceChange ? "true" : "false"} onChange={(event) => setManualDeviceChange(event.target.value === "true")}>
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
                 </label>
               ) : null}
               <label>
@@ -2657,6 +4056,344 @@ export default function Home() {
     );
   }
 
+  function renderTemplateRules() {
+    return (
+      <div className="cc-page-stack">
+        <article className="cc-panel">
+          <div className="cc-panel-head">
+            <h3>Template Rules & Governance</h3>
+            <span>Manage rule-based template selection with automatic conflict detection and audit logging</span>
+          </div>
+
+          <div className="cc-form-grid">
+            <label>
+              Select Category
+              <select
+                value={selectedRuleCategory}
+                onChange={(e) => setSelectedRuleCategory(e.target.value)}
+              >
+                {RULE_CATEGORIES.map((cat) => (
+                  <option key={cat.value} value={cat.value}>{cat.label}</option>
+                ))}
+              </select>
+            </label>
+            <button
+              className="cc-btn-primary"
+              onClick={() => {
+                setEditingRuleId(null);
+                setRuleDraft({
+                  template_code: "",
+                  category: selectedRuleCategory,
+                  priority: 100,
+                  is_default: false,
+                  active: true,
+                  active_from: "",
+                  active_to: "",
+                  customer_tier: "",
+                  account_type: "",
+                  recommended_product: "",
+                  balance_min: "",
+                  balance_max: "",
+                  currency: "",
+                  channel: "",
+                });
+                setRuleFormOpen(true);
+              }}
+            >
+              + New Rule
+            </button>
+          </div>
+
+          {ruleMessage && <p className="cc-inline-feedback">{ruleMessage}</p>}
+        </article>
+
+        {ruleFormOpen && (
+          <article className="cc-panel">
+            <div className="cc-panel-head">
+              <h3>{editingRuleId ? "Edit Rule" : "Create New Rule"}</h3>
+              <span>Define targeting criteria and priority</span>
+            </div>
+
+            <div className="cc-form-grid">
+              <label>
+                Template Code <span style={{ color: "#dc2626" }}>*</span>
+                <input
+                  value={ruleDraft.template_code}
+                  onChange={(e) => setRuleDraft((prev) => ({ ...prev, template_code: e.target.value }))}
+                  placeholder="e.g. SALARY_INCREASE"
+                />
+              </label>
+
+              <label>
+                Priority (Higher = First Match)
+                <input
+                  type="number"
+                  min="0"
+                  max="1000"
+                  value={ruleDraft.priority}
+                  onChange={(e) => setRuleDraft((prev) => ({ ...prev, priority: Number(e.target.value) }))}
+                />
+              </label>
+
+              <label>
+                <input
+                  type="checkbox"
+                  checked={ruleDraft.is_default}
+                  onChange={(e) => setRuleDraft((prev) => ({ ...prev, is_default: e.target.checked }))}
+                />
+                Set as Default (Used when no specific rule matches)
+              </label>
+
+              <label>
+                <input
+                  type="checkbox"
+                  checked={ruleDraft.active}
+                  onChange={(e) => setRuleDraft((prev) => ({ ...prev, active: e.target.checked }))}
+                />
+                Active (Rule is considered for matching)
+              </label>
+
+              <label>
+                Active From Date (Optional)
+                <input
+                  type="date"
+                  value={ruleDraft.active_from || ""}
+                  onChange={(e) => setRuleDraft((prev) => ({ ...prev, active_from: e.target.value }))}
+                />
+              </label>
+
+              <label>
+                Active To Date (Optional)
+                <input
+                  type="date"
+                  value={ruleDraft.active_to || ""}
+                  onChange={(e) => setRuleDraft((prev) => ({ ...prev, active_to: e.target.value }))}
+                />
+              </label>
+
+              <label>
+                Customer Tier (Optional - Leave blank for any tier)
+                <select
+                  value={ruleDraft.customer_tier || ""}
+                  onChange={(e) => setRuleDraft((prev) => ({ ...prev, customer_tier: e.target.value }))}
+                >
+                  <option value="">Any tier</option>
+                  {CUSTOMER_TIERS.map((tier) => (
+                    <option key={tier} value={tier}>{tier}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                Account Type (Optional)
+                <select
+                  value={ruleDraft.account_type || ""}
+                  onChange={(e) => setRuleDraft((prev) => ({ ...prev, account_type: e.target.value }))}
+                >
+                  <option value="">Any type</option>
+                  {ACCOUNT_TYPES.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                Recommended Product (Optional)
+                <input
+                  value={ruleDraft.recommended_product || ""}
+                  onChange={(e) => setRuleDraft((prev) => ({ ...prev, recommended_product: e.target.value }))}
+                  placeholder="e.g. Savings Account"
+                />
+              </label>
+
+              <label>
+                Min Balance (Optional - in Naira)
+                <input
+                  type="number"
+                  min="0"
+                  value={ruleDraft.balance_min || ""}
+                  onChange={(e) => setRuleDraft((prev) => ({ ...prev, balance_min: e.target.value }))}
+                  placeholder="0.00"
+                />
+              </label>
+
+              <label>
+                Max Balance (Optional - in Naira)
+                <input
+                  type="number"
+                  min="0"
+                  value={ruleDraft.balance_max || ""}
+                  onChange={(e) => setRuleDraft((prev) => ({ ...prev, balance_max: e.target.value }))}
+                  placeholder="999999999.99"
+                />
+              </label>
+
+              <label>
+                Currency (Optional)
+                <input
+                  value={ruleDraft.currency || ""}
+                  onChange={(e) => setRuleDraft((prev) => ({ ...prev, currency: e.target.value }))}
+                  placeholder="NGN"
+                />
+              </label>
+
+              <label>
+                Channel (Optional)
+                <select
+                  value={ruleDraft.channel || ""}
+                  onChange={(e) => setRuleDraft((prev) => ({ ...prev, channel: e.target.value }))}
+                >
+                  <option value="">Any channel</option>
+                  {RULE_CHANNELS.map((ch) => (
+                    <option key={ch} value={ch}>{ch}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div style={{ marginTop: "16px", display: "flex", gap: "8px" }}>
+              <button className="cc-btn-primary" onClick={() => void createRule()} disabled={ruleLoading}>
+                {ruleLoading ? "Saving..." : editingRuleId ? "Update Rule" : "Create Rule"}
+              </button>
+              <button className="cc-btn-soft" onClick={() => setRuleFormOpen(false)}>
+                Cancel
+              </button>
+            </div>
+          </article>
+        )}
+
+        {templateRules.length > 0 && (
+          <article className="cc-panel">
+            <div className="cc-panel-head">
+              <h3>Active Rules for {selectedRuleCategory}</h3>
+              <span>{templateRules.length} rule(s) defined in this category</span>
+            </div>
+
+            <div className="cc-table-wrap">
+              <table className="cc-table">
+                <thead>
+                  <tr>
+                    <th>Template</th>
+                    <th>Priority</th>
+                    <th>Default</th>
+                    <th>Tier</th>
+                    <th>Acct Type</th>
+                    <th>Product</th>
+                    <th>Balance Range</th>
+                    <th>Active</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {templateRules.map((rule) => (
+                    <tr key={rule.rule_id}>
+                      <td><strong>{rule.template_code}</strong></td>
+                      <td>{rule.priority}</td>
+                      <td>{rule.is_default ? "✓ Yes" : "—"}</td>
+                      <td>{rule.customer_tier || "—"}</td>
+                      <td>{rule.account_type || "—"}</td>
+                      <td>{rule.recommended_product || "—"}</td>
+                      <td>
+                        {rule.balance_min || rule.balance_max
+                          ? `₦${(rule.balance_min || 0).toLocaleString()} - ₦${(rule.balance_max || 999999999).toLocaleString()}`
+                          : "—"}
+                      </td>
+                      <td>{rule.active ? "✓" : "✗"}</td>
+                      <td>
+                        <div style={{ display: "flex", gap: "4px" }}>
+                          <button
+                            className="cc-btn-soft"
+                            onClick={() => editRule(rule)}
+                            style={{ fontSize: "12px", padding: "4px 8px" }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className="cc-btn-soft"
+                            onClick={() => void deleteRule(rule.rule_id)}
+                            style={{ fontSize: "12px", padding: "4px 8px", color: "#dc2626" }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        )}
+
+        {templateRules.length === 0 && !ruleFormOpen && (
+          <article className="cc-panel cc-placeholder">
+            <h3>No Rules Yet</h3>
+            <p>Click "+ New Rule" above to create your first template rule for {selectedRuleCategory}.</p>
+          </article>
+        )}
+
+        {ruleConflicts.length > 0 && (
+          <article className="cc-panel" style={{ backgroundColor: "#fef3c7", borderLeft: "4px solid #f59e0b" }}>
+            <div className="cc-panel-head">
+              <h3>⚠️ Rule Conflicts Detected</h3>
+              <span style={{ color: "#d97706" }}>{ruleConflicts.length} conflict(s) found</span>
+            </div>
+            <p style={{ marginTop: "12px", color: "#92400e" }}>
+              Multiple rules at the same priority level match the same customer profile. This may cause ambiguous template selection.
+            </p>
+            <p style={{ marginTop: "8px", color: "#92400e", fontSize: "14px" }}>
+              <strong>Resolution:</strong> Adjust priority values so only one rule has the highest priority for each scenario.
+            </p>
+          </article>
+        )}
+
+        <article className="cc-panel">
+          <div className="cc-panel-head">
+            <h3>Template Selection Audit Trail</h3>
+            <span>View which templates were selected and why (last 100)</span>
+          </div>
+
+          {auditEntries.length > 0 ? (
+            <div className="cc-table-wrap">
+              <table className="cc-table">
+                <thead>
+                  <tr>
+                    <th>Customer ID</th>
+                    <th>Category</th>
+                    <th>Selected Template</th>
+                    <th>Matched Rule</th>
+                    <th>Selection Reason</th>
+                    <th>Fallback</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {auditEntries.slice(0, 25).map((entry) => (
+                    <tr key={entry.audit_id}>
+                      <td>CUS-{entry.customer_id.toString().padStart(5, "0")}</td>
+                      <td>{entry.category}</td>
+                      <td><strong>{entry.selected_template_code}</strong></td>
+                      <td>{entry.selected_rule_id ? `Rule #${entry.selected_rule_id}` : "—"}</td>
+                      <td>
+                        {entry.selection_reason === "matched_active_rule"
+                          ? "Active rule matched"
+                          : entry.selection_reason === "matched_default_rule"
+                            ? "Default rule used"
+                            : "Fallback mapping"}
+                      </td>
+                      <td>{entry.was_fallback ? "Yes" : "No"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p style={{ color: "#6b7280", marginTop: "12px" }}>No selections yet. Once emails are sent, they'll appear here.</p>
+          )}
+        </article>
+      </div>
+    );
+  }
+
   function renderPlaceholder(title: string, body: string) {
     return (
       <section className="cc-panel cc-placeholder">
@@ -2678,6 +4415,9 @@ export default function Home() {
     }, {} as Record<string, number>);
     const eventStatusEntries = Object.entries(eventStatusCounts);
     const moduleCategoryOptions = TEMPLATE_EVENT_CATEGORIES[config.jobKey] ?? [];
+    const templateCategoryOptions = getTemplateCategoryOptions(config.jobKey);
+    const productOptions = getInactiveFlowTypeOptions(config.jobKey);
+    const isInactiveTemplateModule = isInactiveModule(config.jobKey);
     const editingTemplateId = editingTemplateByJob[config.jobKey];
     const editingTemplate = moduleTemplates.find((item) => item.id === editingTemplateId);
     const isComposerOpen = templateComposerOpenByJob[config.jobKey];
@@ -2994,9 +4734,9 @@ export default function Home() {
               <thead>
                 <tr>
                   <th>Template Name</th>
-                  <th>Event / Life Update Type</th>
+                  <th>{isInactiveTemplateModule ? "Backend Flow Template" : "Event / Life Update Type"}</th>
                   <th>Date Created</th>
-                  <th>Recommendation Category</th>
+                  <th>{isInactiveTemplateModule ? "Dormancy Category" : "Recommendation Category"}</th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -3006,7 +4746,7 @@ export default function Home() {
                     <td>{row.name}</td>
                     <td>{row.eventCategory}</td>
                     <td>{row.updated}</td>
-                    <td>{row.templateCategory}</td>
+                    <td>{formatTemplateCategoryLabel(row.templateCategory)}</td>
                     <td className="cc-template-action-cell">
                       <div className="cc-template-action-wrap">
                         <button
@@ -3097,10 +4837,10 @@ export default function Home() {
               <div className="cc-template-composer-head">
                 <div>
                   <h4>{editingTemplate ? "Edit Template" : "Create Template"}</h4>
-                  <p>Populate the template with event type, life update category, product, and recommendation details.</p>
+                  <p>{isInactiveTemplateModule ? "Map the template to the backend V3 flow for waves, offers, reminders, and barrier outreach." : "Populate the template with event type, life update category, product, and recommendation details."}</p>
                 </div>
                 <div className="cc-inline-actions">
-                  <button className="cc-btn-soft" onClick={() => setViewingTemplate({ id: "__preview__", updated: new Date().toLocaleDateString("en-GB"), name: templateDraft.name || "(untitled)", templateCategory: templateDraft.templateCategory, product: templateDraft.product, eventCategory: templateDraft.eventCategory, waveStage: templateDraft.waveStage, channel: templateDraft.channel, subject: templateDraft.subject, header: templateDraft.header, headerImage: templateDraft.headerImage, body: templateDraft.body, templateFooter: templateDraft.templateFooter, footerImage: templateDraft.footerImage, footerTextAbove: templateDraft.footerTextAbove, footerTextBelow: templateDraft.footerTextBelow, videoThumbnail: templateDraft.videoThumbnail, gifThumbnail: templateDraft.gifThumbnail, status: "draft" })}>Preview</button>
+                  <button className="cc-btn-soft" onClick={() => setViewingTemplate({ id: "__preview__", updated: new Date().toLocaleDateString("en-GB"), name: templateDraft.name || "(untitled)", templateCategory: templateDraft.templateCategory, product: templateDraft.product, eventCategory: templateDraft.eventCategory, waveStage: templateDraft.waveStage, barrierType: templateDraft.barrierType, notificationFrequencyDays: templateDraft.notificationFrequencyDays ? Number(templateDraft.notificationFrequencyDays) : null, channel: templateDraft.channel, subject: templateDraft.subject, header: templateDraft.header, headerImage: templateDraft.headerImage, body: templateDraft.body, templateFooter: templateDraft.templateFooter, footerImage: templateDraft.footerImage, footerTextAbove: templateDraft.footerTextAbove, footerTextBelow: templateDraft.footerTextBelow, videoThumbnail: templateDraft.videoThumbnail, gifThumbnail: templateDraft.gifThumbnail, status: "draft" })}>Preview</button>
                   <button className="cc-btn-primary" onClick={() => createTemplate(config.jobKey)}>{editingTemplate ? "Save Template" : "Create Template"}</button>
                   <button className="cc-btn-soft" onClick={() => cancelTemplateEdit(config.jobKey)}>Close</button>
                 </div>
@@ -3111,26 +4851,26 @@ export default function Home() {
                   <input value={templateDraft.name} onChange={(event) => updateTemplateDraft(config.jobKey, "name", event.target.value)} placeholder="Template name" />
                 </label>
                 <label>
-                  Recommendation Category
+                  {isInactiveTemplateModule ? "Dormancy Category" : "Recommendation Category"}
                   <select value={templateDraft.templateCategory} onChange={(event) => updateTemplateDraft(config.jobKey, "templateCategory", event.target.value)}>
-                    {TEMPLATE_LIBRARY_CATEGORIES.map((item) => (
-                      <option key={`${config.jobKey}-template-category-${item}`}>{item}</option>
+                    {templateCategoryOptions.map((item) => (
+                      <option key={`${config.jobKey}-template-category-${item}`} value={item}>{formatTemplateCategoryLabel(item)}</option>
                     ))}
                   </select>
                 </label>
                 <label>
-                  Product Category
+                  {isInactiveTemplateModule ? "Flow Type" : "Product Category"}
                   <select value={templateDraft.product} onChange={(event) => updateTemplateDraft(config.jobKey, "product", event.target.value)}>
-                    {TEMPLATE_PRODUCTS.map((item) => (
-                      <option key={`${config.jobKey}-${item}`}>{item}</option>
+                    {productOptions.map((item) => (
+                      <option key={`${config.jobKey}-${item}`} value={item}>{item}</option>
                     ))}
                   </select>
                 </label>
                 <label>
-                  Event / Life Update Type
+                  {isInactiveTemplateModule ? "Backend Flow Template" : "Event / Life Update Type"}
                   <select value={templateDraft.eventCategory} onChange={(event) => updateTemplateDraft(config.jobKey, "eventCategory", event.target.value)}>
                     {moduleCategoryOptions.map((item) => (
-                      <option key={`${config.jobKey}-event-${item}`}>{item}</option>
+                      <option key={`${config.jobKey}-event-${item}`} value={item}>{item}</option>
                     ))}
                   </select>
                 </label>
@@ -3144,6 +4884,24 @@ export default function Home() {
                     ))}
                   </select>
                 </label>
+                {isInactiveTemplateModule ? (
+                  <label>
+                    Notification Frequency (days)
+                    <input
+                      type="number"
+                      min="0"
+                      value={templateDraft.notificationFrequencyDays}
+                      onChange={(event) => updateTemplateDraft(config.jobKey, "notificationFrequencyDays", event.target.value)}
+                      placeholder="e.g. 10"
+                    />
+                  </label>
+                ) : null}
+                {config.jobKey === "inactive-onebank" ? (
+                  <label>
+                    Barrier Type
+                    <input value={templateDraft.barrierType} onChange={(event) => updateTemplateDraft(config.jobKey, "barrierType", event.target.value)} placeholder="e.g. TECHNICAL_PIN" />
+                  </label>
+                ) : null}
                 <label>
                   Channel
                   <select value={templateDraft.channel} onChange={(event) => updateTemplateDraft(config.jobKey, "channel", event.target.value)}>
@@ -3158,6 +4916,9 @@ export default function Home() {
                 <label className="cc-template-subject-field">
                   Header Banner Image <span className="cc-field-note">(PNG or JPG, displayed at the top of the email)</span>
                   <input type="file" accept="image/png,image/jpeg" onChange={(event) => { void handleTemplateImageUpload(config.jobKey, "headerImage", event.target.files); }} />
+                  {templateDraft.headerImage ? (
+                    <img className="cc-template-upload-preview" src={resolveMediaAssetUrl(templateDraft.headerImage)} alt="Selected header banner" />
+                  ) : null}
                 </label>
                 <label className="cc-template-body-field">
                   Template Body
@@ -3174,6 +4935,9 @@ export default function Home() {
                 <label className="cc-template-subject-field">
                   Footer Banner Image (PNG/JPG)
                   <input type="file" accept="image/png,image/jpeg" onChange={(event) => { void handleTemplateImageUpload(config.jobKey, "footerImage", event.target.files); }} />
+                  {templateDraft.footerImage ? (
+                    <img className="cc-template-upload-preview" src={resolveMediaAssetUrl(templateDraft.footerImage)} alt="Selected footer banner" />
+                  ) : null}
                 </label>
                 <label className="cc-template-subject-field">
                   Footer Text (below banner)
@@ -3201,14 +4965,18 @@ export default function Home() {
               </div>
               <div className="cc-template-preview-meta">
                 <span><strong>Name:</strong> {viewingTemplate.name}</span>
-                <span><strong>Category:</strong> {viewingTemplate.templateCategory}</span>
+                <span><strong>Category:</strong> {formatTemplateCategoryLabel(viewingTemplate.templateCategory)}</span>
                 <span><strong>Date Created:</strong> {viewingTemplate.updated}</span>
-                <span><strong>Product:</strong> {viewingTemplate.product}</span>
-                <span><strong>Event:</strong> {viewingTemplate.eventCategory}</span>
+                <span><strong>{isInactiveTemplateModule ? "Flow Type" : "Product"}:</strong> {viewingTemplate.product}</span>
+                <span><strong>{isInactiveTemplateModule ? "Flow" : "Event"}:</strong> {viewingTemplate.eventCategory}</span>
                 <span><strong>{config.jobKey === "existing-migration" ? "Trigger Stage" : "Wave"}:</strong> {formatWaveStageLabel(config.jobKey, viewingTemplate.waveStage)}</span>
+                {viewingTemplate.barrierType ? <span><strong>Barrier:</strong> {viewingTemplate.barrierType}</span> : null}
+                {viewingTemplate.notificationFrequencyDays != null ? <span><strong>Frequency:</strong> {viewingTemplate.notificationFrequencyDays} day(s)</span> : null}
                 <span><strong>Channel:</strong> {viewingTemplate.channel}</span>
               </div>
-              {viewingTemplate.headerImage ? <img className="cc-preview-banner" src={viewingTemplate.headerImage} alt="Header banner" /> : null}
+              {(viewingTemplate.headerImage || globalHeaderImage) ? (
+                <img className="cc-preview-banner" src={resolveMediaAssetUrl(viewingTemplate.headerImage || globalHeaderImage)} alt="Header banner" />
+              ) : null}
               <h4>{applyPreviewTokens(viewingTemplate.subject)}</h4>
               {viewingTemplate.header ? (
                 <p className="cc-preview-header">{applyPreviewTokens(viewingTemplate.header)}</p>
@@ -3228,13 +4996,13 @@ export default function Home() {
                   {viewingTemplate.videoThumbnail ? (
                     <div className="cc-preview-media-card">
                       <span>Video Thumbnail</span>
-                      <img src={viewingTemplate.videoThumbnail} alt="Video thumbnail" />
+                      <img src={resolveMediaAssetUrl(viewingTemplate.videoThumbnail)} alt="Video thumbnail" />
                     </div>
                   ) : null}
                   {viewingTemplate.gifThumbnail ? (
                     <div className="cc-preview-media-card">
                       <span>GIF Thumbnail</span>
-                      <img src={viewingTemplate.gifThumbnail} alt="GIF thumbnail" />
+                      <img src={resolveMediaAssetUrl(viewingTemplate.gifThumbnail)} alt="GIF thumbnail" />
                     </div>
                   ) : null}
                 </div>
@@ -3246,7 +5014,7 @@ export default function Home() {
                   dangerouslySetInnerHTML={{ __html: renderFooterTextHtml(viewingTemplate.footerTextAbove) }}
                 />
               ) : null}
-              {viewingTemplate.footerImage ? <img className="cc-preview-banner" src={viewingTemplate.footerImage} alt="Footer banner" /> : null}
+              {viewingTemplate.footerImage ? <img className="cc-preview-banner" src={resolveMediaAssetUrl(viewingTemplate.footerImage)} alt="Footer banner" /> : null}
               {viewingTemplate.footerTextBelow ? (
                 <p
                   className="cc-preview-footer-text cc-preview-footer-text-under"
@@ -3254,6 +5022,7 @@ export default function Home() {
                   dangerouslySetInnerHTML={{ __html: renderFooterTextHtml(viewingTemplate.footerTextBelow) }}
                 />
               ) : null}
+              {globalBannerImage ? <img className="cc-preview-banner" src={resolveMediaAssetUrl(globalBannerImage)} alt="Global banner" /> : null}
               {globalSignature ? (
                 <p style={{ whiteSpace: "pre-line", marginTop: "20px", paddingTop: "14px", borderTop: "1px solid var(--cc-border, #e5e7eb)", fontSize: "0.875rem" }}>{globalSignature}</p>
               ) : null}
@@ -3500,8 +5269,11 @@ export default function Home() {
         <section className="cc-grid-two">
           <article className="cc-panel">
             <div className="cc-panel-head">
-              <h3>User Management</h3>
-              <span>roles and operational access</span>
+              <div>
+                <h3>User Management</h3>
+                <span>roles and operational access</span>
+              </div>
+              <button type="button" className="cc-btn-primary" onClick={startNewUserDraft}>Add User</button>
             </div>
             <div className="cc-table-wrap">
               <table className="cc-table">
@@ -3512,11 +5284,12 @@ export default function Home() {
                     <th>Team</th>
                     <th>Status</th>
                     <th>Last Seen</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {USER_ROWS.map((row) => (
-                    <tr key={row.name}>
+                  {userRows.map((row) => (
+                    <tr key={row.id}>
                       <td>{row.name}</td>
                       <td>{row.role}</td>
                       <td>{row.team}</td>
@@ -3526,11 +5299,69 @@ export default function Home() {
                         </span>
                       </td>
                       <td>{row.lastSeen}</td>
+                      <td>
+                        <div className="cc-user-actions">
+                          <button
+                            type="button"
+                            className="cc-user-actions-trigger"
+                            aria-label={`Open actions for ${row.name}`}
+                            onClick={() => setOpenUserActionMenuId((prev) => (prev === row.id ? null : row.id))}
+                          >
+                            ...
+                          </button>
+                          {openUserActionMenuId === row.id ? (
+                            <div className="cc-user-actions-menu">
+                              <button type="button" className="cc-btn-soft" onClick={() => startUserEdit(row)}>Edit</button>
+                              <button type="button" className="cc-btn-soft" onClick={() => toggleUserActive(row.id)}>
+                                {row.status === "Active" ? "Deactivate" : "Activate"}
+                              </button>
+                              <button type="button" className="cc-btn-soft" onClick={() => deleteUser(row.id)}>Delete</button>
+                            </div>
+                          ) : null}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+            {userComposerOpen ? (
+              <div className="cc-user-composer">
+                <div className="cc-panel-head cc-user-composer-head">
+                  <div>
+                    <h3>{editingUserId ? "Edit User" : "Add User"}</h3>
+                    <span>{editingUserId ? "update role, team, and status" : "create a new operator profile"}</span>
+                  </div>
+                  <button type="button" className="cc-btn-soft" onClick={clearUserDraft}>Close</button>
+                </div>
+                <div className="cc-user-composer-grid">
+                  <label>
+                    Name
+                    <input value={userDraft.name} onChange={(event) => setUserDraft((prev) => ({ ...prev, name: event.target.value }))} placeholder="User name" />
+                  </label>
+                  <label>
+                    Role
+                    <input value={userDraft.role} onChange={(event) => setUserDraft((prev) => ({ ...prev, role: event.target.value }))} placeholder="Role" />
+                  </label>
+                  <label>
+                    Team
+                    <input value={userDraft.team} onChange={(event) => setUserDraft((prev) => ({ ...prev, team: event.target.value }))} placeholder="Team" />
+                  </label>
+                  <label>
+                    Status
+                    <select value={userDraft.status} onChange={(event) => setUserDraft((prev) => ({ ...prev, status: event.target.value as UserRow["status"] }))}>
+                      <option value="Active">Active</option>
+                      <option value="Suspended">Suspended</option>
+                      <option value="Pending">Pending</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="cc-user-composer-actions">
+                  <button type="button" className="cc-btn-primary" onClick={saveUserDraft}>{editingUserId ? "Update User" : "Create User"}</button>
+                  <button type="button" className="cc-btn-soft" onClick={clearUserDraft}>Cancel</button>
+                </div>
+              </div>
+            ) : null}
           </article>
 
           <article className="cc-panel">
@@ -3539,12 +5370,49 @@ export default function Home() {
               <span>standard retention settings</span>
             </div>
             <div className="cc-kv-list">
-              <div className="cc-kv-row"><span>Transaction Inactive</span><strong>90 days</strong></div>
-              <div className="cc-kv-row"><span>Onebank Inactive</span><strong>60 days</strong></div>
-              <div className="cc-kv-row"><span>Quiet Window</span><strong>22:00 - 06:00</strong></div>
-              <div className="cc-kv-row"><span>Escalation Policy</span><strong>3 failed attempts</strong></div>
+              <div className="cc-kv-row">
+                <span>Transaction Inactive (days)</span>
+                <input type="number" min={1} value={inactivityTransactionDays} onChange={(event) => setInactivityTransactionDays(event.target.value)} style={{ maxWidth: "110px" }} />
+              </div>
+              <div className="cc-kv-row">
+                <span>Onebank Inactive (days)</span>
+                <input type="number" min={1} value={inactivityOnebankDays} onChange={(event) => setInactivityOnebankDays(event.target.value)} style={{ maxWidth: "110px" }} />
+              </div>
+              <div className="cc-kv-row">
+                <span>Quiet Window</span>
+                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                  <input type="time" value={quietWindowStart} onChange={(event) => setQuietWindowStart(event.target.value)} />
+                  <span>-</span>
+                  <input type="time" value={quietWindowEnd} onChange={(event) => setQuietWindowEnd(event.target.value)} />
+                </div>
+              </div>
+              <div className="cc-kv-row">
+                <span>Escalation Attempts</span>
+                <input type="number" min={1} value={escalationAttempts} onChange={(event) => setEscalationAttempts(event.target.value)} style={{ maxWidth: "110px" }} />
+              </div>
             </div>
           </article>
+        </section>
+
+        <section className="cc-panel">
+          <div className="cc-panel-head">
+            <h3>Email Delivery Mode</h3>
+            <span>active backend routing and Sterling dev configuration</span>
+          </div>
+          <div className="cc-kv-list">
+            <div className="cc-kv-row"><span>Application Environment</span><strong>{runtimeConfig?.app_env ?? "development"}</strong></div>
+            <div className="cc-kv-row"><span>Email Mode (Configured)</span><strong>{runtimeConfig?.env_values.EMAIL_MODE ?? "unknown"}</strong></div>
+            <div className="cc-kv-row"><span>Email Mode (Active)</span><strong>{runtimeConfig?.env_values.EFFECTIVE_EMAIL_MODE ?? runtimeConfig?.env_values.EMAIL_MODE ?? "unknown"}</strong></div>
+            <div className="cc-kv-row"><span>Public API Base URL</span><strong>{runtimeConfig?.env_values.PUBLIC_API_BASE_URL ?? "not set"}</strong></div>
+            <div className="cc-kv-row"><span>Frontend V2 API Base URL</span><strong>{V2_API_BASE_URL}</strong></div>
+            <div className="cc-kv-row"><span>Frontend V3 API Base URL</span><strong>{V3_API_BASE_URL}</strong></div>
+            <div className="cc-kv-row"><span>Public Media Base URL</span><strong>{runtimeConfig?.env_values.PUBLIC_TEMPLATE_MEDIA_BASE_URL ?? "not set"}</strong></div>
+            <div className="cc-kv-row"><span>Sterling API URL</span><strong>{runtimeConfig?.env_values.STERLING_EMAIL_API_URL ?? "not set"}</strong></div>
+            <div className="cc-kv-row"><span>Sterling Sender</span><strong>{runtimeConfig?.env_values.STERLING_EMAIL_SOURCE ?? "not set"}</strong></div>
+            <div className="cc-kv-row"><span>Provider</span><strong>{runtimeConfig?.env_values.STERLING_EMAIL_PROVIDER ?? "0"}</strong></div>
+            <div className="cc-kv-row"><span>AUTO_IP Sterling IPs</span><strong>{runtimeConfig?.env_values.EMAIL_MODE_AUTO_STERLING_IPS ?? "not set"}</strong></div>
+            <div className="cc-kv-row"><span>AUTO_IP Fallback</span><strong>{runtimeConfig?.env_values.EMAIL_MODE_AUTO_FALLBACK_MODE ?? "not set"}</strong></div>
+          </div>
         </section>
 
         <section className="cc-grid-two">
@@ -3576,9 +5444,29 @@ export default function Home() {
         <section className="cc-panel">
           <div className="cc-panel-head">
             <h3>Message Branding</h3>
-            <span>global signature and footer applied to all outbound messages</span>
+            <span>global banner, signature, and footer applied to all outbound message previews</span>
           </div>
           <div className="cc-form-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
+            <label>
+              Global Header Image (PNG/JPG)
+              <input type="file" accept="image/png,image/jpeg" onChange={(event) => { void handleGlobalHeaderUpload(event.target.files); }} />
+              {globalHeaderImage ? (
+                <>
+                  <img className="cc-preview-banner" src={resolveMediaAssetUrl(globalHeaderImage)} alt="Global header preview" style={{ maxHeight: "120px", marginTop: "8px" }} />
+                  <button type="button" className="cc-btn-soft" style={{ marginTop: "8px", width: "fit-content" }} onClick={() => setGlobalHeaderImage("")}>Remove Header</button>
+                </>
+              ) : null}
+            </label>
+            <label>
+              Global Banner Image (PNG/JPG)
+              <input type="file" accept="image/png,image/jpeg" onChange={(event) => { void handleGlobalBannerUpload(event.target.files); }} />
+              {globalBannerImage ? (
+                <>
+                  <img className="cc-preview-banner" src={resolveMediaAssetUrl(globalBannerImage)} alt="Global banner preview" style={{ maxHeight: "120px", marginTop: "8px" }} />
+                  <button type="button" className="cc-btn-soft" style={{ marginTop: "8px", width: "fit-content" }} onClick={() => setGlobalBannerImage("")}>Remove Banner</button>
+                </>
+              ) : null}
+            </label>
             <label>
               Global Signature
               <textarea rows={3} value={globalSignature} onChange={(event) => setGlobalSignature(event.target.value)} placeholder={"e.g. Warm regards,\nThe Sterling Team"} style={{ resize: "vertical" }} />
@@ -3587,6 +5475,9 @@ export default function Home() {
               Global Footer
               <textarea rows={3} value={globalFooter} onChange={(event) => setGlobalFooter(event.target.value)} placeholder="e.g. Sterling Bank Limited · 20 Marina, Lagos" style={{ resize: "vertical" }} />
             </label>
+          </div>
+          <div style={{ marginTop: "12px", display: "flex", justifyContent: "flex-end" }}>
+            <button type="button" className="cc-btn-primary" onClick={saveSettings}>Save Settings</button>
           </div>
           <p style={{ fontSize: "0.8rem", color: "#777", marginTop: "10px" }}>Teams may override the signature per template in the template composer. Changes here apply to all new previews immediately.</p>
         </section>
@@ -3763,6 +5654,9 @@ export default function Home() {
         jobKey: "inactive-onebank",
       });
     }
+    if (activePage === "template-rules") {
+      return renderTemplateRules();
+    }
     if (activePage === "reports") {
       return renderReportsPage();
     }
@@ -3895,6 +5789,9 @@ export default function Home() {
           </button>
 
           <p>Operations</p>
+          <button className={activePage === "template-rules" ? "active" : ""} onClick={() => navigate("template-rules")}>
+            Template Rules
+          </button>
           <button className={activePage === "reports" ? "active" : ""} onClick={() => navigate("reports")}>
             Reports
           </button>

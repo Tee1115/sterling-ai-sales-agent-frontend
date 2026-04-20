@@ -27,6 +27,24 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Documentation
+
+### For Operations Teams
+- **[TEMPLATE_RULES_USER_GUIDE.md](TEMPLATE_RULES_USER_GUIDE.md)** - Complete user guide for managing template rules
+  - How to create, edit, and delete rules
+  - Understanding priorities and conflicts
+  - Common use cases and examples
+  - Troubleshooting guide
+
+### For Developers
+- **[TEMPLATE_RULE_INTEGRATION.md](TEMPLATE_RULE_INTEGRATION.md)** - System integration overview
+- **[TEMPLATE_RULES_TECHNICAL_DOCS.md](TEMPLATE_RULES_TECHNICAL_DOCS.md)** - Deep technical documentation
+  - Database schema and models
+  - API endpoints and usage
+  - Selection algorithm details
+  - Testing strategy
+  - Deployment checklist
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
