@@ -2345,6 +2345,16 @@ button.cc-nav-child.active {
   border-color: var(--cc-red);
 }
 
+.cc-rtb-color {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--cc-line);
+  border-radius: 6px;
+  padding: 2px;
+  background: #fff;
+  cursor: pointer;
+}
+
 .cc-rtb-italic em {
   font-style: italic;
 }
@@ -2553,6 +2563,30 @@ button.cc-nav-child.active {
 
 .cc-rich-preview-body p {
   margin: 0 0 0.5em;
+}
+
+.cc-rich-editor [contenteditable="true"] ul,
+.cc-rich-editor [contenteditable="true"] ol,
+.cc-rich-preview-body ul,
+.cc-rich-preview-body ol {
+  margin: 0.6em 0 0.9em 1.4em;
+  padding-left: 1.2em;
+}
+
+.cc-rich-editor [contenteditable="true"] ul,
+.cc-rich-preview-body ul {
+  list-style: disc;
+}
+
+.cc-rich-editor [contenteditable="true"] ol,
+.cc-rich-preview-body ol {
+  list-style: decimal;
+}
+
+.cc-rich-editor [contenteditable="true"] li,
+.cc-rich-preview-body li {
+  display: list-item;
+  margin: 0 0 0.35em;
 }
 
 .cc-preview-header {

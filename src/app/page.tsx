@@ -163,6 +163,18 @@ type TemplateDraft = {
   gifThumbnail: string;
 };
 
+type StoredTemplateUiMeta = {
+  name?: string;
+  templateCategory?: string;
+  product?: string;
+  eventCategory?: string;
+  waveStage?: WaveStage;
+  barrierType?: string;
+  notificationFrequencyDays?: number | null;
+  channel?: string;
+  updated?: string;
+};
+
 type ModuleWavePlan = {
   startDate: string;
   endDate: string;
@@ -627,6 +639,61 @@ const INACTIVE_V3_TEMPLATE_DEFINITIONS: InactiveV3TemplateDefinition[] = [
   },
   {
     moduleKey: "inactive-onebank",
+    code: "APP_DORMANT_WAVE_1",
+    label: "Wave 1 - App Recovery Nudge",
+    templateName: "App Dormant Wave 1",
+    category: "MOBILE_APP_DORMANT",
+    flowType: "Journey Wave",
+    waveStage: "Wave 1",
+    barrierType: "TECHNICAL_PIN",
+    notificationFrequencyDays: 14,
+  },
+  {
+    moduleKey: "inactive-onebank",
+    code: "APP_DORMANT_WAVE_2",
+    label: "Wave 2 - Feature Reminder",
+    templateName: "App Dormant Wave 2",
+    category: "MOBILE_APP_DORMANT",
+    flowType: "Journey Wave",
+    waveStage: "Wave 2",
+    barrierType: "TECHNICAL_DEVICE",
+    notificationFrequencyDays: 14,
+  },
+  {
+    moduleKey: "inactive-onebank",
+    code: "APP_DORMANT_WAVE_3",
+    label: "Wave 3 - Support Reactivation",
+    templateName: "App Dormant Wave 3",
+    category: "MOBILE_APP_DORMANT",
+    flowType: "Journey Wave",
+    waveStage: "Wave 3",
+    barrierType: "USABILITY",
+    notificationFrequencyDays: 14,
+  },
+  {
+    moduleKey: "inactive-onebank",
+    code: "APP_DORMANT_WAVE_4",
+    label: "Wave 4 - Personalised Value",
+    templateName: "App Dormant Wave 4",
+    category: "MOBILE_APP_DORMANT",
+    flowType: "Journey Wave",
+    waveStage: "Wave 4",
+    barrierType: "USABILITY",
+    notificationFrequencyDays: 14,
+  },
+  {
+    moduleKey: "inactive-onebank",
+    code: "APP_DORMANT_WAVE_5",
+    label: "Wave 5 - Final Manager Outreach",
+    templateName: "App Dormant Wave 5",
+    category: "MOBILE_APP_DORMANT",
+    flowType: "Journey Wave",
+    waveStage: "Wave 5",
+    barrierType: "USABILITY",
+    notificationFrequencyDays: 14,
+  },
+  {
+    moduleKey: "inactive-onebank",
     code: "APP_DORMANT_PIN_RESET",
     label: "Barrier - PIN Reset Help",
     templateName: "App Dormant PIN Reset",
@@ -770,7 +837,7 @@ const INITIAL_TEMPLATES: Record<string, TemplateRow[]> = {
     { id: "ti-2", templateCode: "TX_OFFER_CREATED", backendFamily: "v3", name: "Transactional Offer Created", templateCategory: "INACTIVE_TRANSACTIONAL", product: "Offer State", eventCategory: "Offer - Created", waveStage: "Final Wave", notificationFrequencyDays: 10, channel: "Email", subject: "A quick way back to active banking", body: "Your account remains eligible for banking rewards. Re-engage now to stay active and protected.", status: "Draft", updated: "18 Mar 16:34" },
   ],
   "inactive-onebank": [
-    { id: "ob-1", templateCode: "APP_DORMANT_PIN_RESET", backendFamily: "v3", name: "App Dormant PIN Reset", templateCategory: "MOBILE_APP_DORMANT", product: "Barrier Outreach", eventCategory: "Barrier - PIN Reset Help", waveStage: "Wave 1", barrierType: "TECHNICAL_PIN", notificationFrequencyDays: 14, channel: "Email", subject: "Come back to OneBank", body: "There are new features waiting in OneBank. Sign in again and continue seamlessly.", status: "Active", updated: "19 Mar 18:21" },
+    { id: "ob-1", templateCode: "APP_DORMANT_WAVE_1", backendFamily: "v3", name: "App Dormant Wave 1", templateCategory: "MOBILE_APP_DORMANT", product: "Journey Wave", eventCategory: "Wave 1 - App Recovery Nudge", waveStage: "Wave 1", barrierType: "TECHNICAL_PIN", notificationFrequencyDays: 14, channel: "Email", subject: "Need help signing in to OneBank?", body: "If sign-in is blocking you, we can fix it quickly and safely.", status: "Active", updated: "19 Mar 18:21" },
     { id: "ob-2", templateCode: "APP_DORMANT_FEATURE_DISCOVERY", backendFamily: "v3", name: "App Dormant Feature Discovery", templateCategory: "MOBILE_APP_DORMANT", product: "Barrier Outreach", eventCategory: "Barrier - Feature Discovery", waveStage: "Wave 1", barrierType: "USABILITY", notificationFrequencyDays: 14, channel: "Email", subject: "See what you missed in OneBank", body: "Discover the tools and shortcuts you have missed since your last login to OneBank.", status: "Draft", updated: "17 Mar 15:44" },
   ],
 };
@@ -779,14 +846,14 @@ const INITIAL_TEMPLATE_DRAFTS: Record<string, TemplateDraft> = {
   "existing-life-updates": { name: "", templateCategory: "Life Event", product: "Savings", eventCategory: "New Job", waveStage: "Wave 1", barrierType: "", notificationFrequencyDays: "", channel: "Email", subject: "", header: "", headerImage: "", body: "", templateFooter: "", footerImage: "", footerTextAbove: "", footerTextBelow: "", videoThumbnail: "", gifThumbnail: "" },
   "existing-migration": { name: "", templateCategory: "Product Category", product: "Current", eventCategory: "Account Tier Balance Threshold", waveStage: "Wave 1", barrierType: "", notificationFrequencyDays: "", channel: "Email", subject: "", header: "", headerImage: "", body: "", templateFooter: "", footerImage: "", footerTextAbove: "", footerTextBelow: "", videoThumbnail: "", gifThumbnail: "" },
   "inactive-transaction": { name: "Inactive Wave 1", templateCategory: "INACTIVE_TRANSACTIONAL", product: "Journey Wave", eventCategory: "Wave 1 - Soft Re-introduction", waveStage: "Wave 1", barrierType: "", notificationFrequencyDays: "10", channel: "Email", subject: "", header: "", headerImage: "", body: "", templateFooter: "", footerImage: "", footerTextAbove: "", footerTextBelow: "", videoThumbnail: "", gifThumbnail: "" },
-  "inactive-onebank": { name: "App Dormant PIN Reset", templateCategory: "MOBILE_APP_DORMANT", product: "Barrier Outreach", eventCategory: "Barrier - PIN Reset Help", waveStage: "Wave 1", barrierType: "TECHNICAL_PIN", notificationFrequencyDays: "14", channel: "Email", subject: "", header: "", headerImage: "", body: "", templateFooter: "", footerImage: "", footerTextAbove: "", footerTextBelow: "", videoThumbnail: "", gifThumbnail: "" },
+  "inactive-onebank": { name: "App Dormant Wave 1", templateCategory: "MOBILE_APP_DORMANT", product: "Journey Wave", eventCategory: "Wave 1 - App Recovery Nudge", waveStage: "Wave 1", barrierType: "TECHNICAL_PIN", notificationFrequencyDays: "14", channel: "Email", subject: "", header: "", headerImage: "", body: "", templateFooter: "", footerImage: "", footerTextAbove: "", footerTextBelow: "", videoThumbnail: "", gifThumbnail: "" },
 };
 
 const MODULE_WAVE_PLAN_DEFAULTS: Record<string, ModuleWavePlan> = {
   "existing-life-updates": { startDate: "2026-03-21", endDate: "2026-04-20", waves: 3, spacingDays: 7, finalWaveAction: "stop" },
   "existing-migration": { startDate: "2026-03-21", endDate: "2026-04-20", waves: 3, spacingDays: 7, finalWaveAction: "escalate" },
   "inactive-transaction": { startDate: "2026-03-21", endDate: "2026-04-30", waves: 3, spacingDays: 10, finalWaveAction: "stop" },
-  "inactive-onebank": { startDate: "2026-03-21", endDate: "2026-04-30", waves: 2, spacingDays: 14, finalWaveAction: "stop" },
+  "inactive-onebank": { startDate: "2026-03-21", endDate: "2026-04-30", waves: 5, spacingDays: 14, finalWaveAction: "stop" },
 };
 
 const MIGRATION_TRIGGER_PLAN_DEFAULTS: MigrationTriggerPlan = {
@@ -801,6 +868,7 @@ const MIGRATION_TRIGGER_PLAN_DEFAULTS: MigrationTriggerPlan = {
 const LEGACY_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 const V2_API_BASE_URL = process.env.NEXT_PUBLIC_V2_API_BASE_URL ?? LEGACY_API_BASE_URL ?? "http://localhost:8101";
 const V3_API_BASE_URL = process.env.NEXT_PUBLIC_V3_API_BASE_URL ?? LEGACY_API_BASE_URL ?? "http://localhost:8102";
+const MAX_TEMPLATE_IMAGE_BYTES = 1_800_000;
 
 function resolveMediaAssetUrl(raw?: string): string {
   const value = (raw ?? "").trim();
@@ -810,16 +878,97 @@ function resolveMediaAssetUrl(raw?: string): string {
   const v2Base = V2_API_BASE_URL.replace(/\/+$/, "");
   const v3Base = V3_API_BASE_URL.replace(/\/+$/, "");
   const legacyBase = (LEGACY_API_BASE_URL ?? "").replace(/\/+$/, "");
+  const normalized = value.replace(/^\/+/, "");
 
   if (value.startsWith("/v3/")) return `${v3Base}${value}`;
   if (value.startsWith("/v2/")) return `${v2Base}${value}`;
   if (value.startsWith("/")) return `${v3Base || legacyBase || v2Base}${value}`;
+  if (normalized.startsWith("v3/")) return `${v3Base}/${normalized}`;
+  if (normalized.startsWith("v2/")) return `${v2Base}/${normalized}`;
+  if (normalized.startsWith("template-media/")) return `${v3Base}/v3/${normalized}`;
+  if (/\.(png|jpe?g|gif|webp|svg)$/i.test(normalized)) {
+    const fileName = normalized.split("/").pop() ?? normalized;
+    return `${v3Base || legacyBase || v2Base}/v3/template-media/${fileName}`;
+  }
   return value;
+}
+
+async function readApiErrorMessage(response: Response, fallback: string): Promise<string> {
+  try {
+    const contentType = response.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      const payload = (await response.json()) as { detail?: unknown; message?: unknown };
+      if (typeof payload.detail === "string" && payload.detail.trim()) return payload.detail.trim();
+      if (typeof payload.message === "string" && payload.message.trim()) return payload.message.trim();
+    }
+
+    const raw = (await response.text()).trim();
+    if (!raw) return fallback;
+    try {
+      const parsed = JSON.parse(raw) as { detail?: unknown; message?: unknown };
+      if (typeof parsed.detail === "string" && parsed.detail.trim()) return parsed.detail.trim();
+      if (typeof parsed.message === "string" && parsed.message.trim()) return parsed.message.trim();
+    } catch {
+      // Non-JSON payload, return text as-is.
+    }
+    return raw.length > 220 ? `${raw.slice(0, 217)}...` : raw;
+  } catch {
+    return fallback;
+  }
 }
 
 const ENABLE_MANUAL_TRIGGER_PANEL = process.env.NEXT_PUBLIC_ENABLE_MANUAL_TRIGGER === "true";
 const ENABLE_DEMO_SEED_BUTTON = process.env.NEXT_PUBLIC_ENABLE_DEMO_SEED === "true";
 const SETTINGS_STORAGE_KEY = "ai-sales-agent:settings:v1";
+const TEMPLATE_UI_META_STORAGE_KEY = "ai-sales-agent:template-ui-meta:v1";
+
+function readStoredTemplateUiMeta(): Record<string, StoredTemplateUiMeta> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(TEMPLATE_UI_META_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, StoredTemplateUiMeta>;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function persistTemplateUiMeta(templateCode: string, row: Pick<TemplateRow, "name" | "templateCategory" | "product" | "eventCategory" | "waveStage" | "barrierType" | "notificationFrequencyDays" | "channel" | "updated">) {
+  if (typeof window === "undefined" || !templateCode) return;
+  const existing = readStoredTemplateUiMeta();
+  existing[templateCode] = {
+    name: row.name,
+    templateCategory: row.templateCategory,
+    product: row.product,
+    eventCategory: row.eventCategory,
+    waveStage: row.waveStage,
+    barrierType: row.barrierType,
+    notificationFrequencyDays: row.notificationFrequencyDays ?? null,
+    channel: row.channel,
+    updated: row.updated,
+  };
+  window.localStorage.setItem(TEMPLATE_UI_META_STORAGE_KEY, JSON.stringify(existing));
+}
+
+function mergeTemplateRowWithStoredMeta(row: TemplateRow): TemplateRow {
+  if (!row.templateCode) return row;
+  const stored = readStoredTemplateUiMeta()[row.templateCode];
+  if (!stored) return row;
+  return {
+    ...row,
+    name: stored.name || row.name,
+    templateCategory: stored.templateCategory || row.templateCategory,
+    product: stored.product || row.product,
+    eventCategory: stored.eventCategory || row.eventCategory,
+    waveStage: stored.waveStage || row.waveStage,
+    barrierType: stored.barrierType || row.barrierType,
+    notificationFrequencyDays: stored.notificationFrequencyDays ?? row.notificationFrequencyDays,
+    channel: stored.channel || row.channel,
+    updated: stored.updated || row.updated,
+  };
+}
+
 const V2_ENDPOINTS = {
   emailTemplates: `${V2_API_BASE_URL}/v2/email-templates`,
   emailTemplateByCode: (code: string) => `${V2_API_BASE_URL}/v2/email-templates/${encodeURIComponent(code)}`,
@@ -857,6 +1006,9 @@ const V3_ENDPOINTS = {
   templateByCode: (code: string) => `${V3_API_BASE_URL}/v3/templates/${encodeURIComponent(code)}`,
   runtimeConfig: `${V3_API_BASE_URL}/v3/runtime-config`,
   settings: `${V3_API_BASE_URL}/v3/settings`,
+  workflowJobs: `${V3_API_BASE_URL}/v3/workflow-jobs`,
+  workflowJobByKey: (key: string) => `${V3_API_BASE_URL}/v3/workflow-jobs/${encodeURIComponent(key)}`,
+  workflowJobTrigger: (key: string) => `${V3_API_BASE_URL}/v3/workflow-jobs/${encodeURIComponent(key)}/trigger`,
   txInactiveStart: `${V3_API_BASE_URL}/v3/operator/transaction-inactive/start`,
   txInactiveSignal: `${V3_API_BASE_URL}/v3/operator/transaction-inactive/signal`,
   txInactiveOffer: `${V3_API_BASE_URL}/v3/operator/transaction-inactive/offer`,
@@ -864,6 +1016,8 @@ const V3_ENDPOINTS = {
   txInactiveOfferDecline: `${V3_API_BASE_URL}/v3/operator/transaction-inactive/offer/decline-latest`,
   mobileClassify: `${V3_API_BASE_URL}/v3/operator/mobile-app-inactive/classify`,
   mobileConfirmReengagement: `${V3_API_BASE_URL}/v3/operator/mobile-app-inactive/confirm-reengagement`,
+  signalByDormantId: (dormantId: string) => `${V3_API_BASE_URL}/v3/signals/${encodeURIComponent(dormantId)}`,
+  journeySimulateDay: (dormantId: string) => `${V3_API_BASE_URL}/v3/journey/${encodeURIComponent(dormantId)}/simulate-day`,
   journeyStatus: (dormantId: number) => `${V3_API_BASE_URL}/v3/waves/${dormantId}/status`,
 };
 
@@ -1171,19 +1325,23 @@ function mapBackendTemplatesToRows(items: BackendTemplateListItem[]): TemplateRo
       CHILD_TURNS_18: "Final Wave",
       MIGRATION_UPGRADE: "Wave 1",
     };
-    const eventType = eventLabelByCode[safeCode] || safeCode
+    const normalizedDisplayCode = safeCode
+      .replace(/^EXISTING_LIFE_/, "")
+      .replace(/^EXISTING_MIGRATION_/, "");
+    const inferredModule = inferModuleFromTemplateCode(safeCode);
+    const eventType = eventLabelByCode[safeCode] || normalizedDisplayCode
       .split("_")
-      .slice(-2)
+      .filter(Boolean)
       .join(" ")
       .replace(/\b\w/g, (char) => char.toUpperCase());
 
-    return {
-      id: String(item.template_id),
+    return mergeTemplateRowWithStoredMeta({
+      id: `v2-${safeCode}`,
       templateCode: safeCode,
       backendFamily: "v2",
-      name: safeCode.replace(/_/g, " "),
-      templateCategory: "Recommendation Category",
-      product: "General",
+      name: normalizedDisplayCode.replace(/_/g, " "),
+      templateCategory: inferredModule === "existing-life-updates" ? "Life Event" : "Recommendation Category",
+      product: inferredModule === "existing-migration" ? "Current" : "General",
       eventCategory: eventType || "General Event",
       waveStage: waveByCode[safeCode] || "Wave 1",
       barrierType: "",
@@ -1200,15 +1358,15 @@ function mapBackendTemplatesToRows(items: BackendTemplateListItem[]): TemplateRo
       gifThumbnail: item.gif_thumbnail ?? "",
       status: item.active === 0 ? "Draft" : "Active",
       updated: item.created_at ? new Date(item.created_at).toLocaleDateString() : "From API",
-    };
+    });
   });
 }
 
 function mapV3TemplateListToRows(items: BackendV3TemplateListItem[]): TemplateRow[] {
   return items.map((item) => {
     const definition = getInactiveTemplateDefinitionByCode(item.template_code);
-    return {
-      id: item.id,
+    return mergeTemplateRowWithStoredMeta({
+      id: `v3-${item.template_code}`,
       templateCode: item.template_code,
       backendFamily: "v3",
       name: definition?.templateName || item.template_code.replace(/_/g, " "),
@@ -1230,7 +1388,7 @@ function mapV3TemplateListToRows(items: BackendV3TemplateListItem[]): TemplateRo
       gifThumbnail: "",
       status: "Active",
       updated: "From API",
-    };
+    });
   });
 }
 
@@ -1241,6 +1399,17 @@ function toTemplateCode(name: string): string {
     .replace(/[^A-Z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "")
     .slice(0, 80);
+}
+
+function createCustomTemplateCode(jobKey: string, fallbackName: string): string {
+  const normalized = toTemplateCode(fallbackName || "CUSTOM_TEMPLATE") || "CUSTOM_TEMPLATE";
+  if (jobKey === "existing-life-updates") {
+    return `EXISTING_LIFE_${normalized}`.slice(0, 80);
+  }
+  if (jobKey === "existing-migration") {
+    return `EXISTING_MIGRATION_${normalized}`.slice(0, 80);
+  }
+  return normalized;
 }
 
 const TEMPLATE_CODE_BY_JOB_EVENT: Record<string, Record<string, string>> = {
@@ -1281,7 +1450,7 @@ function resolveTemplateCode(jobKey: string, draft: TemplateDraft, fallbackName:
     return mapped;
   }
   if (jobKey === "existing-life-updates" || jobKey === "existing-migration") {
-    return null;
+    return createCustomTemplateCode(jobKey, fallbackName || draft.name || draft.eventCategory);
   }
   return toTemplateCode(fallbackName || draft.name);
 }
@@ -1300,8 +1469,10 @@ const TEMPLATE_CODES_BY_MODULE: Record<string, Set<string>> = {
     "GRADUATION_OFFER",
     "NEW_CHILD_OFFER",
     "FINANCIAL_MILESTONE_OFFER",
+    "SALARY_UPGRADE",
+    "SALARY_O",
   ]),
-  "existing-migration": new Set(["MIGRATION_UPGRADE", "ACCOUNT_TIER_BALANCE_THRESHOLD", "MATURITY_30_DAY_NOTICE", "MATURITY_DAY_OF_FOLLOW_UP", "CHILD_TURNS_18"]),
+  "existing-migration": new Set(["MIGRATION_UPGRADE", "TIER_UPGRADE", "ACCOUNT_TIER_BALANCE_THRESHOLD", "MATURITY_30_DAY_NOTICE", "MATURITY_DAY_OF_FOLLOW_UP", "CHILD_TURNS_18"]),
   "inactive-transaction": new Set(INACTIVE_V3_TEMPLATE_DEFINITIONS.filter((item) => item.moduleKey === "inactive-transaction").map((item) => item.code)),
   "inactive-onebank": new Set(INACTIVE_V3_TEMPLATE_DEFINITIONS.filter((item) => item.moduleKey === "inactive-onebank").map((item) => item.code)),
 };
@@ -1313,6 +1484,8 @@ function inferModuleFromTemplateCode(templateCode?: string): string | null {
     return definition.moduleKey;
   }
   const code = templateCode.trim().toUpperCase();
+  if (code.startsWith("EXISTING_LIFE_")) return "existing-life-updates";
+  if (code.startsWith("EXISTING_MIGRATION_")) return "existing-migration";
   const moduleMatch = Object.entries(TEMPLATE_CODES_BY_MODULE).find(([, codes]) => codes.has(code));
   return moduleMatch ? moduleMatch[0] : null;
 }
@@ -1373,7 +1546,10 @@ function RichBodyEditor({ value, onChange }: { value: string; onChange: (html: s
   const [showLink, setShowLink] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
   const [linkText, setLinkText] = useState("");
+  const [fontFamily, setFontFamily] = useState("Arial, sans-serif");
   const [fontSize, setFontSize] = useState("16px");
+  const [textColor, setTextColor] = useState("#111827");
+  const [highlightColor, setHighlightColor] = useState("#ffffff");
 
   // Seed content on mount only
   useEffect(() => {
@@ -1402,8 +1578,25 @@ function RichBodyEditor({ value, onChange }: { value: string; onChange: (html: s
 
   function exec(cmd: string, arg?: string) {
     editorRef.current?.focus();
+    restoreRange();
     document.execCommand(cmd, false, arg ?? undefined);
     syncOut();
+    saveRange();
+  }
+
+  function applyTextColor(color: string) {
+    setTextColor(color);
+    exec("foreColor", color);
+  }
+
+  function applyHighlightColor(color: string) {
+    setHighlightColor(color);
+    exec("hiliteColor", color);
+  }
+
+  function applyFontFamily(family: string) {
+    setFontFamily(family);
+    exec("fontName", family);
   }
 
   function saveRange() {
@@ -1493,6 +1686,22 @@ function RichBodyEditor({ value, onChange }: { value: string; onChange: (html: s
         <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); exec("justifyCenter"); }} title="Align centre">Center</button>
         <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); exec("justifyRight"); }} title="Align right">Right</button>
         <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); exec("justifyFull"); }} title="Justify">Justify</button>
+        <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); exec("insertUnorderedList"); }} title="Bulleted list">• List</button>
+        <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); exec("insertOrderedList"); }} title="Numbered list">1. List</button>
+        <span className="cc-rtb-sep" />
+        <select
+          className="cc-rtb-select"
+          value={fontFamily}
+          title="Font family"
+          onMouseDown={(e) => { e.stopPropagation(); }}
+          onChange={(e) => { editorRef.current?.focus(); applyFontFamily(e.target.value); }}
+        >
+          <option value="Arial, sans-serif">Arial</option>
+          <option value="Georgia, serif">Georgia</option>
+          <option value="Tahoma, sans-serif">Tahoma</option>
+          <option value="Verdana, sans-serif">Verdana</option>
+          <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+        </select>
         <span className="cc-rtb-sep" />
         <select
           className="cc-rtb-select"
@@ -1505,6 +1714,22 @@ function RichBodyEditor({ value, onChange }: { value: string; onChange: (html: s
             <option key={s} value={s}>{s.replace("px","pt")}</option>
           ))}
         </select>
+        <input
+          type="color"
+          className="cc-rtb-color"
+          title="Text color"
+          value={textColor}
+          onMouseDown={(e) => { e.stopPropagation(); }}
+          onChange={(e) => { editorRef.current?.focus(); applyTextColor(e.target.value); }}
+        />
+        <input
+          type="color"
+          className="cc-rtb-color"
+          title="Highlight color"
+          value={highlightColor}
+          onMouseDown={(e) => { e.stopPropagation(); }}
+          onChange={(e) => { editorRef.current?.focus(); applyHighlightColor(e.target.value); }}
+        />
         <span className="cc-rtb-sep" />
         <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); applyCase("uppercase"); }} title="UPPERCASE">AA</button>
         <button type="button" className="cc-rtb-btn" onMouseDown={(e) => { e.preventDefault(); applyCase("lowercase"); }} title="lowercase">aa</button>
@@ -1538,11 +1763,12 @@ function RichBodyEditor({ value, onChange }: { value: string; onChange: (html: s
         contentEditable
         suppressContentEditableWarning
         className="cc-rich-content"
+        onMouseDown={saveRange}
         onMouseUp={saveRange}
         onKeyUp={saveRange}
         onFocus={() => { isFocused.current = true; }}
         onBlur={() => { isFocused.current = false; syncOut(); }}
-        onInput={syncOut}
+        onInput={() => { syncOut(); saveRange(); }}
       />
     </div>
   );
@@ -1639,6 +1865,7 @@ export default function Home() {
   const [manualLoginFailureCount, setManualLoginFailureCount] = useState<string>("3");
   const [manualLastFailureReason, setManualLastFailureReason] = useState<string>("WRONG_PIN");
   const [manualDeviceChange, setManualDeviceChange] = useState<boolean>(false);
+  const [manualDormantId, setManualDormantId] = useState<string>("");
   const [moduleWavePlans, setModuleWavePlans] = useState<Record<string, ModuleWavePlan>>(MODULE_WAVE_PLAN_DEFAULTS);
   const [migrationTriggerPlan, setMigrationTriggerPlan] = useState<MigrationTriggerPlan>(MIGRATION_TRIGGER_PLAN_DEFAULTS);
 
@@ -1678,6 +1905,11 @@ export default function Home() {
     ],
     "inactive-transaction": [
       { value: "tx_start", label: "Start Journey (Wave 1)" },
+      { value: "tx_wave_60", label: "Run Wave Day 60" },
+      { value: "tx_wave_75", label: "Run Wave Day 75" },
+      { value: "tx_wave_90", label: "Run Wave Day 90" },
+      { value: "tx_wave_120", label: "Run Wave Day 120" },
+      { value: "tx_wave_150", label: "Run Wave Day 150" },
       { value: "tx_signal_email_open", label: "Signal: Email Opened" },
       { value: "tx_signal_app_login", label: "Signal: App Login" },
       { value: "tx_signal_transaction", label: "Signal: Transaction Complete" },
@@ -1692,6 +1924,13 @@ export default function Home() {
       { value: "mobile_pin_reset", label: "Classify: PIN Reset Barrier" },
       { value: "mobile_new_device", label: "Classify: New Device Barrier" },
       { value: "mobile_feature", label: "Classify: Feature Discovery" },
+      { value: "mobile_wave_91", label: "Run Wave Day 91" },
+      { value: "mobile_wave_105", label: "Run Wave Day 105" },
+      { value: "mobile_wave_120", label: "Run Wave Day 120" },
+      { value: "mobile_wave_135", label: "Run Wave Day 135" },
+      { value: "mobile_wave_150", label: "Run Wave Day 150" },
+      { value: "mobile_signal_app_login", label: "Signal: App Login" },
+      { value: "mobile_signal_transaction", label: "Signal: Transaction Complete" },
       { value: "mobile_confirm", label: "Confirm Re-engagement" },
     ],
   };
@@ -1752,12 +1991,21 @@ export default function Home() {
           return existing
             ? {
                 ...row,
+                name: existing.name || row.name,
+                templateCategory: existing.templateCategory || row.templateCategory,
+                product: existing.product || row.product,
+                eventCategory: existing.eventCategory || row.eventCategory,
+                waveStage: existing.waveStage || row.waveStage,
+                barrierType: existing.barrierType || row.barrierType,
+                notificationFrequencyDays: existing.notificationFrequencyDays ?? row.notificationFrequencyDays,
+                channel: existing.channel || row.channel,
                 headerImage: preferFilledValue(row.headerImage, existing.headerImage),
                 footerImage: preferFilledValue(row.footerImage, existing.footerImage),
                 footerTextAbove: preferFilledValue(row.footerTextAbove, existing.footerTextAbove),
                 footerTextBelow: preferFilledValue(row.footerTextBelow, existing.footerTextBelow),
                 videoThumbnail: preferFilledValue(row.videoThumbnail, existing.videoThumbnail),
                 gifThumbnail: preferFilledValue(row.gifThumbnail, existing.gifThumbnail),
+                updated: existing.updated || row.updated,
               }
             : row;
         });
@@ -1775,23 +2023,27 @@ export default function Home() {
 
   async function syncWorkflowJobsFromBackend() {
     try {
-      const response = await fetch(V2_ENDPOINTS.workflowJobs, {
-        headers: { Accept: "application/json" },
-      });
+      const [v2Payload, v3Payload] = await Promise.all([
+        fetch(V2_ENDPOINTS.workflowJobs, { headers: { Accept: "application/json" } })
+          .then(async (res) => (res.ok ? ((await res.json()) as { jobs?: BackendWorkflowJob[] }) : null))
+          .catch(() => null),
+        fetch(V3_ENDPOINTS.workflowJobs, { headers: { Accept: "application/json" } })
+          .then(async (res) => (res.ok ? ((await res.json()) as { jobs?: BackendWorkflowJob[] }) : null))
+          .catch(() => null),
+      ]);
 
-      if (!response.ok) {
-        return;
-      }
+      const backendJobs = [
+        ...(Array.isArray(v2Payload?.jobs) ? v2Payload.jobs : []),
+        ...(Array.isArray(v3Payload?.jobs) ? v3Payload.jobs : []),
+      ];
+      if (!backendJobs.length) return;
 
-      const payload = (await response.json()) as { jobs?: BackendWorkflowJob[] };
-      const backendJobs = Array.isArray(payload.jobs) ? payload.jobs : [];
-      if (!backendJobs.length) {
-        return;
-      }
+      const byKey = new Map<string, BackendWorkflowJob>();
+      backendJobs.forEach((job) => byKey.set(job.key, job));
 
       setJobs((prev) =>
         prev.map((job) => {
-          const backend = backendJobs.find((item) => item.key === job.key);
+          const backend = byKey.get(job.key);
           if (!backend) {
             return job;
           }
@@ -1853,7 +2105,7 @@ export default function Home() {
     setGlobalSignature(payload.globalSignature ?? "Warm regards,\nThe Sterling Team");
     setGlobalFooter(payload.globalFooter ?? "Sterling Bank Limited - Sterling Towers, 20 Marina, Lagos - RC 6253");
     setInactivityTransactionDays(payload.inactivityTransactionDays ?? "90");
-    setInactivityOnebankDays(payload.inactivityOnebankDays ?? "60");
+    setInactivityOnebankDays(payload.inactivityOnebankDays ?? "91");
     setQuietWindowStart(payload.quietWindowStart ?? "22:00");
     setQuietWindowEnd(payload.quietWindowEnd ?? "06:00");
     setEscalationAttempts(payload.escalationAttempts ?? "3");
@@ -1930,8 +2182,8 @@ export default function Home() {
         }),
       });
       if (!res.ok) {
-        const err = (await res.json()) as { detail?: string };
-        setTxResult({ lifeEvent: "", eventDetected: false, product: null, emailStatus: null, error: err.detail ?? "Request failed" });
+        const message = await readApiErrorMessage(res, "Request failed");
+        setTxResult({ lifeEvent: "", eventDetected: false, product: null, emailStatus: null, error: message });
         return;
       }
       const KNOWN_EVENTS = new Set(["salary_increase", "school_fees", "fx_transfer", "loan_repayment", "rent_payment", "child_turns_18", "migration_upgrade", "account_tier_balance_threshold", "investment_maturity"]);
@@ -1967,8 +2219,15 @@ export default function Home() {
         emailStatus: rec?.email?.status ?? null,
         error: null,
       });
-    } catch {
-      setTxResult({ lifeEvent: "", eventDetected: false, product: null, emailStatus: null, error: "Network error — backend may be offline" });
+    } catch (error) {
+      const detail = error instanceof Error && error.message ? ` (${error.message})` : "";
+      setTxResult({
+        lifeEvent: "",
+        eventDetected: false,
+        product: null,
+        emailStatus: null,
+        error: `Network error - request to backend failed${detail}`,
+      });
     } finally {
       setTxLoading(false);
     }
@@ -2233,6 +2492,11 @@ export default function Home() {
     return jobs;
   }, [jobs, customerScope]);
 
+  const onebankWelcomeBackTemplate = useMemo(
+    () => templatesByJob["inactive-onebank"]?.find((row) => row.templateCode === "APP_DORMANT_WELCOME_BACK") ?? null,
+    [templatesByJob],
+  );
+
   const filteredReportRows = useMemo(() => {
     const withinRange = WORKFLOW_LOG_ROWS.filter((row) => row.date >= reportStartDate && row.date <= reportEndDate);
     const monthFiltered = reportFilterMode === "month" ? withinRange.filter((row) => row.date.startsWith(reportMonth)) : withinRange;
@@ -2269,9 +2533,11 @@ export default function Home() {
     }
 
     const nextEnabled = !current.enabled;
+    const isInactiveJob = key.startsWith("inactive-");
+    const endpoint = isInactiveJob ? V3_ENDPOINTS.workflowJobByKey(key) : V2_ENDPOINTS.workflowJobByKey(key);
 
     try {
-      const response = await fetch(V2_ENDPOINTS.workflowJobByKey(key), {
+      const response = await fetch(endpoint, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -2309,8 +2575,10 @@ export default function Home() {
 
   async function triggerJobNow(key: string) {
     const job = jobs.find((item) => item.key === key);
+    const isInactiveJob = key.startsWith("inactive-");
+    const endpoint = isInactiveJob ? V3_ENDPOINTS.workflowJobTrigger(key) : V2_ENDPOINTS.workflowJobTrigger(key);
     try {
-      const response = await fetch(V2_ENDPOINTS.workflowJobTrigger(key), {
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { Accept: "application/json" },
       });
@@ -2441,6 +2709,46 @@ export default function Home() {
         let txUrl = "";
         let txBody: Record<string, unknown> = { customer_id: cid };
 
+        if (manualTriggerSignal.startsWith("tx_wave_")) {
+          if (!manualDormantId) {
+            setManualMessage("Run Start Journey first so the UI can resolve the dormant journey ID before running wave simulation.");
+            window.setTimeout(() => setManualMessage(""), 5000);
+            return;
+          }
+
+          const day = Number(manualTriggerSignal.replace("tx_wave_", ""));
+          if (!Number.isFinite(day)) {
+            setManualMessage("Invalid transaction wave day selection.");
+            window.setTimeout(() => setManualMessage(""), 4000);
+            return;
+          }
+
+          const waveResponse = await fetch(V3_ENDPOINTS.journeySimulateDay(manualDormantId), {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ simulate_to_day: day }),
+          });
+
+          if (!waveResponse.ok) {
+            const errText = await waveResponse.text();
+            throw new Error(`Transaction wave simulation failed: ${errText}`);
+          }
+
+          const waveResult = (await waveResponse.json()) as { triggered?: Array<{ wave_number?: number; status?: string; subject_rendered?: string }> };
+          const triggered = Array.isArray(waveResult.triggered) ? waveResult.triggered : [];
+          if (triggered.length === 0) {
+            setManualMessage(`Transaction wave day ${day} completed. No new wave sent (likely already sent or paused).`);
+            return;
+          }
+
+          const first = triggered[0];
+          const waveNo = typeof first.wave_number === "number" ? `Wave ${first.wave_number}` : `day ${day}`;
+          const status = first.status ?? "SENT";
+          const subject = first.subject_rendered ? ` - ${first.subject_rendered}` : "";
+          setManualMessage(`Transaction wave simulation success: ${waveNo} ${status}${subject}`);
+          return;
+        }
+
         if (manualTriggerSignal === "tx_start") {
           txUrl = V3_ENDPOINTS.txInactiveStart;
         } else if (manualTriggerSignal in TX_SIGNAL_TYPE_MAP) {
@@ -2483,6 +2791,12 @@ export default function Home() {
         }
 
         const txResult = (await txResponse.json()) as Record<string, unknown>;
+        const txDormantId = typeof (txResult.customer as Record<string, unknown> | undefined)?.dormant_id === "string"
+          ? String((txResult.customer as Record<string, unknown>).dormant_id)
+          : "";
+        if (txDormantId) {
+          setManualDormantId(txDormantId);
+        }
         const txDetail =
           typeof txResult.message === "string"
             ? txResult.message
@@ -2500,7 +2814,66 @@ export default function Home() {
           return;
         }
 
-        if (manualTriggerSignal === "mobile_confirm") {
+        if (manualTriggerSignal.startsWith("mobile_wave_")) {
+          if (!manualDormantId) {
+            setManualMessage("Run Onebank classify first so the UI can resolve the dormant journey ID before running wave simulation.");
+            window.setTimeout(() => setManualMessage(""), 5000);
+            return;
+          }
+
+          const day = Number(manualTriggerSignal.replace("mobile_wave_", ""));
+          if (!Number.isFinite(day)) {
+            setManualMessage("Invalid wave day selection.");
+            window.setTimeout(() => setManualMessage(""), 4000);
+            return;
+          }
+
+          const waveResponse = await fetch(V3_ENDPOINTS.journeySimulateDay(manualDormantId), {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ simulate_to_day: day }),
+          });
+
+          if (!waveResponse.ok) {
+            const errText = await waveResponse.text();
+            throw new Error(`Onebank wave simulation failed: ${errText}`);
+          }
+
+          const waveResult = (await waveResponse.json()) as { triggered?: Array<{ wave_number?: number; status?: string; subject_rendered?: string }> };
+          const triggered = Array.isArray(waveResult.triggered) ? waveResult.triggered : [];
+          if (triggered.length === 0) {
+            setManualMessage(`Wave simulation day ${day} completed. No new wave sent (likely already sent or paused).`);
+          } else {
+            const first = triggered[0];
+            const waveNo = typeof first.wave_number === "number" ? `Wave ${first.wave_number}` : `day ${day}`;
+            const status = first.status ?? "SENT";
+            const subject = first.subject_rendered ? ` - ${first.subject_rendered}` : "";
+            setManualMessage(`Wave simulation success: ${waveNo} ${status}${subject}`);
+          }
+        } else if (manualTriggerSignal === "mobile_signal_app_login" || manualTriggerSignal === "mobile_signal_transaction") {
+          if (!manualDormantId) {
+            setManualMessage("Run Onebank classify first so the UI can resolve the dormant journey ID before logging signals.");
+            window.setTimeout(() => setManualMessage(""), 5000);
+            return;
+          }
+
+          const signalType = manualTriggerSignal === "mobile_signal_app_login" ? "APP_LOGIN" : "TRANSACTION_COMPLETE";
+          const signalResponse = await fetch(V3_ENDPOINTS.signalByDormantId(manualDormantId), {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ signal_type: signalType }),
+          });
+
+          if (!signalResponse.ok) {
+            const errText = await signalResponse.text();
+            throw new Error(`Onebank signal failed: ${errText}`);
+          }
+
+          const signalResult = (await signalResponse.json()) as Record<string, unknown>;
+          const welcomeBackSent = signalResult.welcome_back_sent === true ? "; welcome-back email sent" : "";
+          const action = typeof signalResult.action === "string" ? signalResult.action : "processed";
+          setManualMessage(`Onebank signal recorded: ${signalType} (${action}${welcomeBackSent})`);
+        } else if (manualTriggerSignal === "mobile_confirm") {
           const confirmResponse = await fetch(V3_ENDPOINTS.mobileConfirmReengagement, {
             method: "POST",
             headers: { "Content-Type": "application/json", Accept: "application/json" },
@@ -2513,9 +2886,16 @@ export default function Home() {
           }
 
           const confirmResult = (await confirmResponse.json()) as Record<string, unknown>;
+          const confirmDormantId = typeof (confirmResult.customer as Record<string, unknown> | undefined)?.dormant_id === "string"
+            ? String((confirmResult.customer as Record<string, unknown>).dormant_id)
+            : "";
+          if (confirmDormantId) {
+            setManualDormantId(confirmDormantId);
+          }
           const confirmStatus = typeof confirmResult.status === "string" ? confirmResult.status : "done";
           const confirmNote = typeof confirmResult.reason === "string" ? ` - ${confirmResult.reason}` : "";
-          setManualMessage(`Re-engagement confirmed: ${confirmStatus}${confirmNote}`);
+          const confirmEmail = confirmResult.email_sent === true ? " - confirmation email sent" : "";
+          setManualMessage(`Re-engagement confirmed: ${confirmStatus}${confirmEmail}${confirmNote}`);
         } else {
           const MOBILE_BARRIER_BODY_MAP: Record<string, Record<string, unknown>> = {
             mobile_pin_reset: {
@@ -2551,6 +2931,12 @@ export default function Home() {
           }
 
           const mobileResult = (await mobileResponse.json()) as Record<string, unknown>;
+          const mobileDormantId = typeof (mobileResult.customer as Record<string, unknown> | undefined)?.dormant_id === "string"
+            ? String((mobileResult.customer as Record<string, unknown>).dormant_id)
+            : "";
+          if (mobileDormantId) {
+            setManualDormantId(mobileDormantId);
+          }
           const barrierType = typeof mobileResult.barrier_type === "string" ? mobileResult.barrier_type : "classified";
           const emailSent = mobileResult.email_sent === true ? ", email sent" : "";
           setManualMessage(`App Inactive classified: ${barrierType}${emailSent}`);
@@ -2833,7 +3219,7 @@ export default function Home() {
   function buildV3TemplateRow(detail: BackendV3TemplateDetail, fallbackName?: string): TemplateRow {
     const definition = getInactiveTemplateDefinitionByCode(detail.template_code);
     return {
-      id: detail.id,
+    id: `v3-${detail.template_code}`,
       templateCode: detail.template_code,
       backendFamily: "v3",
       name: fallbackName || definition?.templateName || detail.template_code.replace(/_/g, " "),
@@ -2965,12 +3351,22 @@ export default function Home() {
         }
 
         if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(errorText || "Failed to save V3 template");
+          throw new Error(await readApiErrorMessage(response, "Failed to save V3 template"));
         }
 
         const detail = (await response.json()) as BackendV3TemplateDetail;
         const savedRow = buildV3TemplateRow(detail, draft.name);
+        persistTemplateUiMeta(savedRow.templateCode || built.templateCode, {
+          name: draft.name || savedRow.name,
+          templateCategory: draft.templateCategory || savedRow.templateCategory,
+          product: draft.product || savedRow.product,
+          eventCategory: draft.eventCategory || savedRow.eventCategory,
+          waveStage: draft.waveStage || savedRow.waveStage,
+          barrierType: draft.barrierType || savedRow.barrierType,
+          notificationFrequencyDays: draft.notificationFrequencyDays ? Number(draft.notificationFrequencyDays) : savedRow.notificationFrequencyDays,
+          channel: draft.channel || savedRow.channel,
+          updated: "Just now",
+        });
 
         setTemplatesByJob((prev) => ({
           ...prev,
@@ -3034,10 +3430,23 @@ export default function Home() {
         });
 
         if (!response.ok) {
-          throw new Error("Failed to update template");
+          throw new Error(await readApiErrorMessage(response, "Failed to update template"));
         }
-      } catch {
-        setManualMessage("Unable to save to backend right now. Please try again.");
+
+        persistTemplateUiMeta(templateCode, {
+          name: draft.name,
+          templateCategory: draft.templateCategory,
+          product: draft.product,
+          eventCategory: draft.eventCategory,
+          waveStage: draft.waveStage,
+          barrierType: draft.barrierType,
+          notificationFrequencyDays: draft.notificationFrequencyDays ? Number(draft.notificationFrequencyDays) : null,
+          channel: draft.channel,
+          updated: "Just now",
+        });
+      } catch (error) {
+        const message = error instanceof Error && error.message ? error.message : "Unable to save to backend right now. Please try again.";
+        setManualMessage(message);
         window.setTimeout(() => setManualMessage(""), 3500);
         return;
       }
@@ -3119,7 +3528,8 @@ export default function Home() {
       return;
     }
 
-    let createdTemplateId = `${jobKey}-${Date.now()}`;
+    const existingTemplateForCode = (templatesByJob[jobKey] ?? []).find((item) => item.templateCode === templateCode);
+    let createdTemplateId = `v2-${templateCode}`;
     try {
       const response = await fetch(V2_ENDPOINTS.emailTemplates, {
         method: "POST",
@@ -3143,49 +3553,90 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to create template");
+        throw new Error(await readApiErrorMessage(response, "Failed to create template"));
       }
 
       const payload = (await response.json()) as BackendTemplateUpsertResponse;
-      if (payload?.template?.template_id) {
-        createdTemplateId = String(payload.template.template_id);
+      if (payload?.template?.template_code) {
+        createdTemplateId = `v2-${payload.template.template_code}`;
       }
-    } catch {
-      setManualMessage("Unable to create template in backend right now. Please try again.");
+      persistTemplateUiMeta(templateCode, {
+        name: draft.name,
+        templateCategory: draft.templateCategory,
+        product: draft.product,
+        eventCategory: draft.eventCategory,
+        waveStage: draft.waveStage,
+        barrierType: draft.barrierType,
+        notificationFrequencyDays: draft.notificationFrequencyDays ? Number(draft.notificationFrequencyDays) : null,
+        channel: draft.channel,
+        updated: "Just now",
+      });
+    } catch (error) {
+      const message = error instanceof Error && error.message ? error.message : "Unable to create template in backend right now. Please try again.";
+      setManualMessage(message);
       window.setTimeout(() => setManualMessage(""), 3500);
       return;
     }
 
     setTemplatesByJob((prev) => ({
       ...prev,
-      [jobKey]: [
-        {
-          id: createdTemplateId,
-          templateCode,
-          backendFamily: "v2",
-          name: draft.name,
-          templateCategory: draft.templateCategory,
-          product: draft.product,
-          eventCategory: draft.eventCategory,
-          waveStage: draft.waveStage,
-          barrierType: draft.barrierType,
-          notificationFrequencyDays: draft.notificationFrequencyDays ? Number(draft.notificationFrequencyDays) : null,
-          channel: draft.channel,
-          subject: draft.subject,
-          header: draft.header,
-          headerImage: draft.headerImage,
-          body: draft.body,
-          templateFooter: draft.templateFooter,
-          footerImage: draft.footerImage,
-          footerTextAbove: draft.footerTextAbove,
-          footerTextBelow: draft.footerTextBelow,
-          videoThumbnail: draft.videoThumbnail,
-          gifThumbnail: draft.gifThumbnail,
-          status: "Draft",
-          updated: "Just now",
-        },
-        ...(prev[jobKey] ?? []),
-      ],
+      [jobKey]: existingTemplateForCode
+        ? (prev[jobKey] ?? []).map((item) =>
+            item.templateCode === templateCode
+              ? {
+                  ...item,
+                  id: createdTemplateId,
+                  name: draft.name,
+                  templateCategory: draft.templateCategory,
+                  product: draft.product,
+                  eventCategory: draft.eventCategory,
+                  waveStage: draft.waveStage,
+                  barrierType: draft.barrierType,
+                  notificationFrequencyDays: draft.notificationFrequencyDays ? Number(draft.notificationFrequencyDays) : null,
+                  channel: draft.channel,
+                  subject: draft.subject,
+                  header: draft.header,
+                  headerImage: draft.headerImage,
+                  body: draft.body,
+                  templateFooter: draft.templateFooter,
+                  footerImage: draft.footerImage,
+                  footerTextAbove: draft.footerTextAbove,
+                  footerTextBelow: draft.footerTextBelow,
+                  videoThumbnail: draft.videoThumbnail,
+                  gifThumbnail: draft.gifThumbnail,
+                  status: "Active",
+                  updated: "Just now",
+                }
+              : item,
+          )
+        : [
+            {
+              id: createdTemplateId,
+              templateCode,
+              backendFamily: "v2",
+              name: draft.name,
+              templateCategory: draft.templateCategory,
+              product: draft.product,
+              eventCategory: draft.eventCategory,
+              waveStage: draft.waveStage,
+              barrierType: draft.barrierType,
+              notificationFrequencyDays: draft.notificationFrequencyDays ? Number(draft.notificationFrequencyDays) : null,
+              channel: draft.channel,
+              subject: draft.subject,
+              header: draft.header,
+              headerImage: draft.headerImage,
+              body: draft.body,
+              templateFooter: draft.templateFooter,
+              footerImage: draft.footerImage,
+              footerTextAbove: draft.footerTextAbove,
+              footerTextBelow: draft.footerTextBelow,
+              videoThumbnail: draft.videoThumbnail,
+              gifThumbnail: draft.gifThumbnail,
+              status: "Draft",
+              updated: "Just now",
+            },
+            ...(prev[jobKey] ?? []),
+          ],
     }));
 
     const refreshed = await fetchBackendTemplateRows();
@@ -3195,7 +3646,7 @@ export default function Home() {
 
     setTemplateComposerOpenByJob((prev) => ({ ...prev, [jobKey]: false }));
     setTemplateDrafts((prev) => ({ ...prev, [jobKey]: INITIAL_TEMPLATE_DRAFTS[jobKey] }));
-    setManualMessage("Template created successfully.");
+    setManualMessage(existingTemplateForCode ? "Template updated successfully for this event." : "Template created successfully.");
     window.setTimeout(() => setManualMessage(""), 3500);
   }
 
@@ -3204,6 +3655,13 @@ export default function Home() {
     setTemplateDrafts((prev) => ({ ...prev, [jobKey]: INITIAL_TEMPLATE_DRAFTS[jobKey] }));
     setTemplateComposerOpenByJob((prev) => ({ ...prev, [jobKey]: true }));
     setOpenTemplateActionMenuByJob((prev) => ({ ...prev, [jobKey]: null }));
+  }
+
+  function draftTargetsExistingTemplate(jobKey: string, draft: TemplateDraft): boolean {
+    if (isInactiveModule(jobKey)) return false;
+    const templateCode = resolveTemplateCode(jobKey, draft, draft.name);
+    if (!templateCode) return false;
+    return (templatesByJob[jobKey] ?? []).some((item) => item.templateCode === templateCode);
   }
 
   async function viewTemplate(template: TemplateRow) {
@@ -3238,7 +3696,7 @@ export default function Home() {
       const detail = (await response.json()) as BackendTemplateDetail;
       setViewingTemplate({
         ...template,
-        id: String(detail.template_id),
+        id: `v2-${detail.template_code}`,
         templateCode: detail.template_code,
         name: detail.template_code.replace(/_/g, " "),
         subject: detail.subject_template,
@@ -3303,6 +3761,11 @@ export default function Home() {
     const allowedTypes = ["image/png", "image/jpeg"];
     if (!allowedTypes.includes(file.type)) {
       setManualMessage("Only PNG or JPG images are supported for banners and thumbnails.");
+      window.setTimeout(() => setManualMessage(""), 3500);
+      return;
+    }
+    if (file.size > MAX_TEMPLATE_IMAGE_BYTES) {
+      setManualMessage("Image is too large. Use a PNG/JPG smaller than 1.8MB.");
       window.setTimeout(() => setManualMessage(""), 3500);
       return;
     }
@@ -3871,6 +4334,9 @@ export default function Home() {
                     const nextSignal = manualSignalOptionsByModule[nextModule]?.[0]?.value ?? "";
                     setManualModuleKey(nextModule);
                     setManualTriggerSignal(nextSignal);
+                    if (nextModule !== "inactive-onebank" && nextModule !== "inactive-transaction") {
+                      setManualDormantId("");
+                    }
                     if (nextModule === "existing-life-updates") {
                       const selectedEvent = LIFE_EVENT_TRIGGER_OPTIONS.find((item) => item.value === nextSignal) ?? LIFE_EVENT_TRIGGER_OPTIONS[0];
                       setManualAmount(selectedEvent.defaultAmount);
@@ -3890,6 +4356,9 @@ export default function Home() {
                   onChange={(event) => {
                     const nextSignal = event.target.value;
                     setManualTriggerSignal(nextSignal);
+                    if (manualModuleKey === "inactive-onebank") {
+                      setManualDeviceChange(nextSignal === "mobile_new_device");
+                    }
                     if (manualModuleKey === "existing-life-updates") {
                       const selectedEvent = LIFE_EVENT_TRIGGER_OPTIONS.find((item) => item.value === nextSignal);
                       if (selectedEvent) {
@@ -3972,6 +4441,12 @@ export default function Home() {
                   </select>
                 </label>
               ) : null}
+              {(manualModuleKey === "inactive-onebank" || manualModuleKey === "inactive-transaction") ? (
+                <label>
+                  Resolved Dormant ID
+                  <input value={manualDormantId} readOnly placeholder={manualModuleKey === "inactive-onebank" ? "Populate by running classify first" : "Populate by running Start Journey first"} />
+                </label>
+              ) : null}
               <label>
                 Effective Date
                 <input type="date" value={manualStartDate} onChange={(event) => setManualStartDate(event.target.value)} />
@@ -3989,6 +4464,14 @@ export default function Home() {
               {manualSubmitting ? "Triggering..." : "Trigger workflow"}
             </button>
             {manualMessage ? <p className="cc-inline-feedback">{manualMessage}</p> : null}
+            {manualModuleKey === "inactive-onebank" && onebankWelcomeBackTemplate ? (
+              <div className="cc-inline-feedback" style={{ marginTop: "12px" }}>
+                <strong>App Login Email Preview</strong>
+                <div><strong>Template:</strong> {onebankWelcomeBackTemplate.templateCode}</div>
+                <div><strong>Subject:</strong> {onebankWelcomeBackTemplate.subject}</div>
+                <div dangerouslySetInnerHTML={{ __html: onebankWelcomeBackTemplate.body }} />
+              </div>
+            ) : null}
           </article>
 
           <article className="cc-panel" style={{ marginTop: "16px" }}>
@@ -4832,20 +5315,21 @@ export default function Home() {
         </article>
 
         {isComposerOpen ? (
-          <section className="cc-template-modal-overlay" role="dialog" aria-modal="true" aria-label={editingTemplate ? "Edit template" : "Create template"}>
+          <section className="cc-template-modal-overlay" role="dialog" aria-modal="true" aria-label={editingTemplate || draftTargetsExistingTemplate(config.jobKey, templateDraft) ? "Edit template" : "Create template"}>
             <div className="cc-panel cc-template-modal cc-template-modal-wide">
               <div className="cc-template-composer-head">
                 <div>
-                  <h4>{editingTemplate ? "Edit Template" : "Create Template"}</h4>
+                  <h4>{editingTemplate || draftTargetsExistingTemplate(config.jobKey, templateDraft) ? "Save Template" : "Create Template"}</h4>
                   <p>{isInactiveTemplateModule ? "Map the template to the backend V3 flow for waves, offers, reminders, and barrier outreach." : "Populate the template with event type, life update category, product, and recommendation details."}</p>
                 </div>
                 <div className="cc-inline-actions">
                   <button className="cc-btn-soft" onClick={() => setViewingTemplate({ id: "__preview__", updated: new Date().toLocaleDateString("en-GB"), name: templateDraft.name || "(untitled)", templateCategory: templateDraft.templateCategory, product: templateDraft.product, eventCategory: templateDraft.eventCategory, waveStage: templateDraft.waveStage, barrierType: templateDraft.barrierType, notificationFrequencyDays: templateDraft.notificationFrequencyDays ? Number(templateDraft.notificationFrequencyDays) : null, channel: templateDraft.channel, subject: templateDraft.subject, header: templateDraft.header, headerImage: templateDraft.headerImage, body: templateDraft.body, templateFooter: templateDraft.templateFooter, footerImage: templateDraft.footerImage, footerTextAbove: templateDraft.footerTextAbove, footerTextBelow: templateDraft.footerTextBelow, videoThumbnail: templateDraft.videoThumbnail, gifThumbnail: templateDraft.gifThumbnail, status: "draft" })}>Preview</button>
-                  <button className="cc-btn-primary" onClick={() => createTemplate(config.jobKey)}>{editingTemplate ? "Save Template" : "Create Template"}</button>
+                  <button className="cc-btn-primary" onClick={() => { void createTemplate(config.jobKey); }}>{editingTemplate || draftTargetsExistingTemplate(config.jobKey, templateDraft) ? "Save Template" : "Create Template"}</button>
                   <button className="cc-btn-soft" onClick={() => cancelTemplateEdit(config.jobKey)}>Close</button>
                 </div>
               </div>
               <div className="cc-form-grid cc-template-form-grid cc-template-composer-grid">
+                {manualMessage ? <p className="cc-inline-feedback" style={{ margin: "0 0 0.75em", gridColumn: "1 / -1" }}>{manualMessage}</p> : null}
                 <label>
                   Template Name
                   <input value={templateDraft.name} onChange={(event) => updateTemplateDraft(config.jobKey, "name", event.target.value)} placeholder="Template name" />
@@ -4961,7 +5445,14 @@ export default function Home() {
             <div className="cc-panel cc-template-modal cc-template-modal-view">
               <div className="cc-panel-head">
                 <h3>Template Preview</h3>
-                <button className="cc-btn-soft" onClick={() => setViewingTemplate(null)}>Close</button>
+                <div className="cc-inline-actions">
+                  {isComposerOpen ? (
+                    <button className="cc-btn-primary" onClick={() => { setViewingTemplate(null); void createTemplate(config.jobKey); }}>
+                      {editingTemplate || draftTargetsExistingTemplate(config.jobKey, templateDraft) ? "Save Template" : "Create Template"}
+                    </button>
+                  ) : null}
+                  <button className="cc-btn-soft" onClick={() => setViewingTemplate(null)}>Close</button>
+                </div>
               </div>
               <div className="cc-template-preview-meta">
                 <span><strong>Name:</strong> {viewingTemplate.name}</span>
