@@ -1010,12 +1010,17 @@ const V3_ENDPOINTS = {
   workflowJobByKey: (key: string) => `${V3_API_BASE_URL}/v3/workflow-jobs/${encodeURIComponent(key)}`,
   workflowJobTrigger: (key: string) => `${V3_API_BASE_URL}/v3/workflow-jobs/${encodeURIComponent(key)}/trigger`,
   txInactiveStart: `${V3_API_BASE_URL}/v3/operator/transaction-inactive/start`,
+  txInactiveStartBulk: `${V3_API_BASE_URL}/v3/operator/transaction-inactive/start/bulk`,
   txInactiveSignal: `${V3_API_BASE_URL}/v3/operator/transaction-inactive/signal`,
+  txInactiveSignalBulk: `${V3_API_BASE_URL}/v3/operator/transaction-inactive/signal/bulk`,
   txInactiveOffer: `${V3_API_BASE_URL}/v3/operator/transaction-inactive/offer`,
   txInactiveOfferAccept: `${V3_API_BASE_URL}/v3/operator/transaction-inactive/offer/accept-latest`,
   txInactiveOfferDecline: `${V3_API_BASE_URL}/v3/operator/transaction-inactive/offer/decline-latest`,
+  onebankClassify: `${V3_API_BASE_URL}/v3/operator/onebank-inactive/classify`,
   mobileClassify: `${V3_API_BASE_URL}/v3/operator/mobile-app-inactive/classify`,
+  onebankClassifyBulk: `${V3_API_BASE_URL}/v3/operator/onebank-inactive/classify/bulk`,
   mobileConfirmReengagement: `${V3_API_BASE_URL}/v3/operator/mobile-app-inactive/confirm-reengagement`,
+  onebankConfirmReengagementBulk: `${V3_API_BASE_URL}/v3/operator/onebank-inactive/confirm-reengagement/bulk`,
   signalByDormantId: (dormantId: string) => `${V3_API_BASE_URL}/v3/signals/${encodeURIComponent(dormantId)}`,
   journeySimulateDay: (dormantId: string) => `${V3_API_BASE_URL}/v3/journey/${encodeURIComponent(dormantId)}/simulate-day`,
   journeyStatus: (dormantId: number) => `${V3_API_BASE_URL}/v3/waves/${dormantId}/status`,
@@ -2629,6 +2634,13 @@ export default function Home() {
 
     setManualSubmitting(true);
     try {
+      const parsedCustomerIds = manualCustomerId
+        .split(",")
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0)
+        .map((item) => Number(item))
+        .filter((item) => Number.isInteger(item) && item > 0);
+
       if (manualModuleKey === "existing-life-updates") {
         const selectedEvent = LIFE_EVENT_TRIGGER_OPTIONS.find((item) => item.value === manualTriggerSignal) ?? LIFE_EVENT_TRIGGER_OPTIONS[0];
         const isDocumentExpiryEvent =
@@ -2690,12 +2702,13 @@ export default function Home() {
 
         setManualMessage("Lifecycle Triggers workflow triggered successfully.");
       } else if (manualModuleKey === "inactive-transaction") {
-        const cid = Number(manualCustomerId);
-        if (!manualCustomerId || isNaN(cid) || cid <= 0) {
-          setManualMessage("A valid Customer ID is required for Transaction Inactive flows.");
+        if (parsedCustomerIds.length === 0) {
+          setManualMessage("Provide one or more valid Customer ID values (comma-separated) for Transaction Inactive flows.");
           window.setTimeout(() => setManualMessage(""), 4000);
           return;
         }
+        const cid = parsedCustomerIds[0];
+        const isBulkMode = parsedCustomerIds.length > 1;
 
         const TX_SIGNAL_TYPE_MAP: Record<string, string> = {
           tx_signal_email_open: "EMAIL_OPEN",
@@ -2710,6 +2723,11 @@ export default function Home() {
         let txBody: Record<string, unknown> = { customer_id: cid };
 
         if (manualTriggerSignal.startsWith("tx_wave_")) {
+          if (isBulkMode) {
+            setManualMessage("Wave simulation currently supports one customer at a time. Use a single Customer ID.");
+            window.setTimeout(() => setManualMessage(""), 4500);
+            return;
+          }
           if (!manualDormantId) {
             setManualMessage("Run Start Journey first so the UI can resolve the dormant journey ID before running wave simulation.");
             window.setTimeout(() => setManualMessage(""), 5000);
@@ -2750,11 +2768,19 @@ export default function Home() {
         }
 
         if (manualTriggerSignal === "tx_start") {
-          txUrl = V3_ENDPOINTS.txInactiveStart;
+          txUrl = isBulkMode ? V3_ENDPOINTS.txInactiveStartBulk : V3_ENDPOINTS.txInactiveStart;
+          txBody = isBulkMode ? { customer_ids: parsedCustomerIds } : { customer_id: cid };
         } else if (manualTriggerSignal in TX_SIGNAL_TYPE_MAP) {
-          txUrl = V3_ENDPOINTS.txInactiveSignal;
-          txBody = { customer_id: cid, signal_type: TX_SIGNAL_TYPE_MAP[manualTriggerSignal] };
+          txUrl = isBulkMode ? V3_ENDPOINTS.txInactiveSignalBulk : V3_ENDPOINTS.txInactiveSignal;
+          txBody = isBulkMode
+            ? { customer_ids: parsedCustomerIds, signal_type: TX_SIGNAL_TYPE_MAP[manualTriggerSignal] }
+            : { customer_id: cid, signal_type: TX_SIGNAL_TYPE_MAP[manualTriggerSignal] };
         } else if (manualTriggerSignal === "tx_offer_create") {
+          if (isBulkMode) {
+            setManualMessage("Offer create currently supports one customer at a time. Use a single Customer ID.");
+            window.setTimeout(() => setManualMessage(""), 4500);
+            return;
+          }
           if (!manualOfferTitle || !manualOfferDescription || !manualOfferType || !manualOfferExpiry) {
             setManualMessage("Offer title, description, type, and expiry are required to create an offer.");
             window.setTimeout(() => setManualMessage(""), 4000);
@@ -2770,8 +2796,18 @@ export default function Home() {
             expires_at: manualOfferExpiry,
           };
         } else if (manualTriggerSignal === "tx_offer_accept") {
+          if (isBulkMode) {
+            setManualMessage("Offer accept currently supports one customer at a time. Use a single Customer ID.");
+            window.setTimeout(() => setManualMessage(""), 4500);
+            return;
+          }
           txUrl = V3_ENDPOINTS.txInactiveOfferAccept;
         } else if (manualTriggerSignal === "tx_offer_decline") {
+          if (isBulkMode) {
+            setManualMessage("Offer decline currently supports one customer at a time. Use a single Customer ID.");
+            window.setTimeout(() => setManualMessage(""), 4500);
+            return;
+          }
           txUrl = V3_ENDPOINTS.txInactiveOfferDecline;
         } else {
           setManualMessage("Select a valid Transaction Inactive action.");
@@ -2791,6 +2827,12 @@ export default function Home() {
         }
 
         const txResult = (await txResponse.json()) as Record<string, unknown>;
+        if (isBulkMode) {
+          const succeeded = typeof txResult.succeeded === "number" ? txResult.succeeded : 0;
+          const failed = typeof txResult.failed === "number" ? txResult.failed : 0;
+          setManualMessage(`Transaction Inactive bulk completed: ${succeeded} succeeded, ${failed} failed.`);
+          return;
+        }
         const txDormantId = typeof (txResult.customer as Record<string, unknown> | undefined)?.dormant_id === "string"
           ? String((txResult.customer as Record<string, unknown>).dormant_id)
           : "";
@@ -2807,14 +2849,20 @@ export default function Home() {
                 : "Action completed";
         setManualMessage(`Transaction Inactive: ${txDetail}`);
       } else if (manualModuleKey === "inactive-onebank") {
-        const cid = Number(manualCustomerId);
-        if (!manualCustomerId || isNaN(cid) || cid <= 0) {
-          setManualMessage("A valid Customer ID is required for Onebank Inactive flows.");
+        if (parsedCustomerIds.length === 0) {
+          setManualMessage("Provide one or more valid Customer ID values (comma-separated) for Onebank Inactive flows.");
           window.setTimeout(() => setManualMessage(""), 4000);
           return;
         }
+        const cid = parsedCustomerIds[0];
+        const isBulkMode = parsedCustomerIds.length > 1;
 
         if (manualTriggerSignal.startsWith("mobile_wave_")) {
+          if (isBulkMode) {
+            setManualMessage("Wave simulation currently supports one customer at a time. Use a single Customer ID.");
+            window.setTimeout(() => setManualMessage(""), 4500);
+            return;
+          }
           if (!manualDormantId) {
             setManualMessage("Run Onebank classify first so the UI can resolve the dormant journey ID before running wave simulation.");
             window.setTimeout(() => setManualMessage(""), 5000);
@@ -2851,6 +2899,11 @@ export default function Home() {
             setManualMessage(`Wave simulation success: ${waveNo} ${status}${subject}`);
           }
         } else if (manualTriggerSignal === "mobile_signal_app_login" || manualTriggerSignal === "mobile_signal_transaction") {
+          if (isBulkMode) {
+            setManualMessage("Onebank signal capture currently supports one customer at a time from Agent Control.");
+            window.setTimeout(() => setManualMessage(""), 4500);
+            return;
+          }
           if (!manualDormantId) {
             setManualMessage("Run Onebank classify first so the UI can resolve the dormant journey ID before logging signals.");
             window.setTimeout(() => setManualMessage(""), 5000);
@@ -2874,10 +2927,10 @@ export default function Home() {
           const action = typeof signalResult.action === "string" ? signalResult.action : "processed";
           setManualMessage(`Onebank signal recorded: ${signalType} (${action}${welcomeBackSent})`);
         } else if (manualTriggerSignal === "mobile_confirm") {
-          const confirmResponse = await fetch(V3_ENDPOINTS.mobileConfirmReengagement, {
+          const confirmResponse = await fetch(isBulkMode ? V3_ENDPOINTS.onebankConfirmReengagementBulk : V3_ENDPOINTS.mobileConfirmReengagement, {
             method: "POST",
             headers: { "Content-Type": "application/json", Accept: "application/json" },
-            body: JSON.stringify({ customer_id: cid }),
+            body: JSON.stringify(isBulkMode ? { customer_ids: parsedCustomerIds } : { customer_id: cid }),
           });
 
           if (!confirmResponse.ok) {
@@ -2886,6 +2939,12 @@ export default function Home() {
           }
 
           const confirmResult = (await confirmResponse.json()) as Record<string, unknown>;
+          if (isBulkMode) {
+            const succeeded = typeof confirmResult.succeeded === "number" ? confirmResult.succeeded : 0;
+            const failed = typeof confirmResult.failed === "number" ? confirmResult.failed : 0;
+            setManualMessage(`Onebank re-engagement bulk completed: ${succeeded} succeeded, ${failed} failed.`);
+            return;
+          }
           const confirmDormantId = typeof (confirmResult.customer as Record<string, unknown> | undefined)?.dormant_id === "string"
             ? String((confirmResult.customer as Record<string, unknown>).dormant_id)
             : "";
@@ -2918,8 +2977,16 @@ export default function Home() {
             },
           };
 
-          const mobileBody = MOBILE_BARRIER_BODY_MAP[manualTriggerSignal] ?? { customer_id: cid };
-          const mobileResponse = await fetch(V3_ENDPOINTS.mobileClassify, {
+          const mobileBody = isBulkMode
+            ? {
+                customer_ids: parsedCustomerIds,
+                login_failure_count: Number(manualLoginFailureCount) || 3,
+                last_failure_reason: manualLastFailureReason || "WRONG_PIN",
+                device_change_detected: manualDeviceChange,
+                new_device_id: "device-test-001",
+              }
+            : (MOBILE_BARRIER_BODY_MAP[manualTriggerSignal] ?? { customer_id: cid });
+          const mobileResponse = await fetch(isBulkMode ? V3_ENDPOINTS.onebankClassifyBulk : V3_ENDPOINTS.onebankClassify, {
             method: "POST",
             headers: { "Content-Type": "application/json", Accept: "application/json" },
             body: JSON.stringify(mobileBody),
@@ -2931,6 +2998,12 @@ export default function Home() {
           }
 
           const mobileResult = (await mobileResponse.json()) as Record<string, unknown>;
+          if (isBulkMode) {
+            const succeeded = typeof mobileResult.succeeded === "number" ? mobileResult.succeeded : 0;
+            const failed = typeof mobileResult.failed === "number" ? mobileResult.failed : 0;
+            setManualMessage(`Onebank classify bulk completed: ${succeeded} succeeded, ${failed} failed.`);
+            return;
+          }
           const mobileDormantId = typeof (mobileResult.customer as Record<string, unknown> | undefined)?.dormant_id === "string"
             ? String((mobileResult.customer as Record<string, unknown>).dormant_id)
             : "";
@@ -4318,8 +4391,8 @@ export default function Home() {
             </p>
             <div className="cc-form-grid">
               <label>
-                Customer ID
-                <input value={manualCustomerId} onChange={(event) => setManualCustomerId(event.target.value)} placeholder="e.g. 50" />
+                Customer ID(s)
+                <input value={manualCustomerId} onChange={(event) => setManualCustomerId(event.target.value)} placeholder="e.g. 50 or 50,51,52" />
               </label>
               <label>
                 Account Number
